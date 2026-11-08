@@ -1,0 +1,10 @@
+# Nunca publicar: dados unicos do aparelho e binarios de terceiros
+backup/
+logs/
+platform-tools/
+platform-tools.zip
+apks_instalar/
+firmware/
+*.img
+*.apk
+*.zip
