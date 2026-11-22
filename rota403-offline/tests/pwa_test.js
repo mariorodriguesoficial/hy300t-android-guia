@@ -18,6 +18,18 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   await page.goto(BASE + '/login'); await page.fill('[name=login]', 'maria'); await page.fill('[name=senha]', 'Senha1234'); await page.click('button');
   await page.waitForURL(/\/garcom/); ok(true, 'garçom entra e cai em /garcom');
 
+  // ---- pilha Caddy + php-cgi (a mesma do Windows): arquivos internos nunca são servidos
+  if (process.env.STACK === 'caddy') {
+    const anon = await browser.newContext(); 
+    const srv = (await anon.request.get(BASE + '/login')).headers()['server'] || '';
+    ok(/caddy/i.test(srv), 'servido pelo Caddy (Server: ' + srv + ')');
+    for (const pth of ['/config/config.local.php', '/config/config.php', '/includes/Sync.php', '/migrations/001_sync_base.php', '/bin/migrate.php', '/storage/php-error.log', '/uploads/x.php', '/assets/x.php', '/ATUALIZACAO_ROTA403_V23.txt', '/ZERAR_VENDAS_E_ESTOQUE.sql'])
+      ok((await anon.request.get(BASE + pth)).status() === 403, 'bloqueado: ' + pth);
+    const r = await anon.request.get(BASE + '/comandas', { maxRedirects: 0 }); ok(r.status() === 302 && /login/.test(r.headers()['location'] || ''), 'URL sem .php (/comandas) reescrita para comandas.php (302 → login)');
+    ok((await anon.request.get(BASE + '/api/sync/v1/health')).status() === 200, 'rota /api/sync/v1/health responde pelo pool');
+    await anon.close();
+  }
+
   // ---- manifesto
   const man = await (await page.request.get(BASE + '/manifest.php')).json();
   ok(man.display === 'standalone' && man.start_url === '/garcom' && man.scope === '/' && man.theme_color && man.name.includes('Garçom'), 'manifesto: standalone, start_url, scope, nome');

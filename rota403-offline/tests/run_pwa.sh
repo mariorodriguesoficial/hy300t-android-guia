@@ -2,7 +2,7 @@
 # Sobe MariaDB+PHP temporários e roda tests/pwa_test.js (Playwright/Chromium com emulação de celular).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; T="$(mktemp -d)"; PW="t$(head -c6 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-cleanup(){ for f in p.pid php.pid; do [ -f "$T/$f" ] && kill "$(cat $T/$f)" 2>/dev/null || true; done; rm -rf "$T"; }
+cleanup(){ for f in p.pid php.pid; do [ -f "$T/$f" ] && kill "$(cat $T/$f)" 2>/dev/null || true; done; [ -f "$T/cgi.pids" ] && kill $(cat "$T/cgi.pids") 2>/dev/null || true; rm -rf "$T"; }
 trap cleanup EXIT
 mkdir -p "$T/data" "$T/app"
 mariadb-install-db --user=root --datadir="$T/data" --auth-root-authentication-method=normal >/dev/null 2>&1
@@ -22,7 +22,13 @@ PHP
  $c=Database::val("SELECT id FROM categorias WHERE nome=\"Bebidas\""); $e=Database::val("SELECT id FROM categorias WHERE nome=\"Espetos\"");
  Database::query("INSERT INTO produtos (nome,preco,categoria_id,estoque,destino,codigo_barras) VALUES (\"Cerveja lata\",7.5,?,100,\"balcao\",\"1001\"),(\"Espeto de carne\",12,?,100,\"cozinha\",\"1002\")",[$c,$e]);
  Database::query("INSERT INTO caixas (usuario_id,saldo_inicial) VALUES (1,0)");')
-php -S 127.0.0.1:8105 -t "$T/app" "$T/app/router.php" >"$T/php.log" 2>&1 & echo $! > "$T/php.pid"
-sleep 1
+if [ "${STACK:-}" = "caddy" ]; then   # mesma pilha do Windows: Caddy + pool de php-cgi
+  for p in 9101 9102 9103 9104; do PHP_FCGI_MAX_REQUESTS=500 php-cgi -b 127.0.0.1:$p >"$T/cgi$p.log" 2>&1 & echo $! >> "$T/cgi.pids"; done
+  php "$T/app/bin/gerar-caddyfile.php" --raiz="$T/app" --dados="$T/dados" --porta-http=8105 --cgi=9101,9102,9103,9104 >/dev/null
+  caddy run --config "$T/dados/Caddyfile" --adapter caddyfile >"$T/caddy.log" 2>&1 & echo $! > "$T/php.pid"
+else
+  php -S 127.0.0.1:8105 -t "$T/app" "$T/app/router.php" >"$T/php.log" 2>&1 & echo $! > "$T/php.pid"
+fi
+sleep 2
 export BASE=http://127.0.0.1:8105 SOCK="$T/s.sock" DBNAME=rota403_pwa SHOTS="${SHOTS:-}" NODE_PATH="$(npm root -g)"
 node "$ROOT/tests/pwa_test.js"
