@@ -92,6 +92,25 @@ begin
   Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass ' + Args, '', SW_HIDE, ewWaitUntilTerminated, Codigo);
 end;
 
+// Executa o PowerShell gravando TODA a saída (inclusive erros) em LogArq, para diagnóstico.
+function PowerShellComLog(const Args, LogArq: String; var Codigo: Integer): Boolean;
+begin
+  ForceDirectories(ExtractFileDir(LogArq));
+  Result := Exec(ExpandConstant('{cmd}'),
+    '/C ""' + ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe') + '" -NoProfile -ExecutionPolicy Bypass ' + Args + ' > "' + LogArq + '" 2>&1"',
+    '', SW_HIDE, ewWaitUntilTerminated, Codigo);
+end;
+
+function UltimasLinhas(const Arq: String; Max: Integer): String;
+var Txt: AnsiString; N: Integer;
+begin
+  Result := '(sem saída registrada)';
+  if LoadStringFromFile(Arq, Txt) then begin
+    N := Length(Txt);
+    if N > Max then Result := '...' + Copy(Txt, N - Max + 1, Max) else Result := Txt;
+  end;
+end;
+
 function PortaOcupada(Porta: Integer): Boolean;
 var Codigo: Integer;
 begin
@@ -216,9 +235,11 @@ begin
       if PgLan.Values[0] then Args := Args + ' -Lan';
     end;
     WizardForm.StatusLabel.Caption := 'Configurando banco de dados e serviços (pode levar alguns minutos)...';
-    if not PowerShell(Args, Codigo) or (Codigo <> 0) then begin
+    if (not PowerShellComLog(Args, DadosDir + '\logs\instalador-powershell.log', Codigo)) or (Codigo <> 0) then begin
       DeleteFile(ArqAdmin);
-      MsgBox('A configuração falhou. Nada foi apagado. Veja o log:' + #13#10 + DadosDir + '\logs\instalacao.log', mbCriticalError, MB_OK);
+      MsgBox('A configuração falhou (código ' + IntToStr(Codigo) + '). Nada foi apagado.' + #13#10#13#10 +
+             'Últimas linhas do erro:' + #13#10 + UltimasLinhas(DadosDir + '\logs\instalador-powershell.log', 900) + #13#10#13#10 +
+             'Logs completos em: ' + DadosDir + '\logs', mbCriticalError, MB_OK);
       Abort;
     end;
     DeleteFile(ArqAdmin);
