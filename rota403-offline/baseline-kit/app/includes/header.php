@@ -1,0 +1,40 @@
+<?php
+$u = Auth::user();
+$atual = basename($_SERVER['SCRIPT_NAME']);
+$menu = [
+    ['comandas.php', 'Comandas', 'bi-receipt', ['caixa', 'garcom']],
+    ['garcom.php', 'Garçom', 'bi-phone', ['caixa', 'garcom']],
+    ['caixa.php', 'Caixa', 'bi-cash-coin', ['caixa']],
+    ['produtos.php', 'Estoque', 'bi-box-seam', ['__admin__']],
+    ['impressao.php', 'Impressão', 'bi-printer', ['caixa']],
+    ['relatorios.php', 'Relatórios', 'bi-graph-up', ['__admin__']],
+    ['usuarios.php', 'Usuários', 'bi-people', ['__admin__']],
+    ['configuracoes.php', 'Configurações', 'bi-gear', ['__admin__']],
+];
+?><!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf" content="<?= csrf_token() ?>">
+<title><?= e($titulo ?? 'Comandas') ?> — Rota 403</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="<?= url('assets/style.css?v=6') ?>" rel="stylesheet">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <?php $emp = empresa(); ?><div class="brand"><?php if ($emp['logo'] && is_file(BASE_PATH . '/' . $emp['logo'])): ?><img src="<?= url($emp['logo']) ?>?v=<?= filemtime(BASE_PATH . '/' . $emp['logo']) ?>" alt="" style="height:36px;width:36px;object-fit:contain;border-radius:50%;background:#fff"><?php else: ?><span class="ember-dot"><i class="bi bi-fire"></i></span><?php endif; ?><span class="brand-name"><?= e($emp['nome']) ?></span></div>
+    <nav>
+      <?php foreach ($menu as [$arq, $label, $ico, $niv]): if (!Auth::pode($niv)) continue; ?>
+        <a href="<?= url($arq) ?>"<?= $arq === 'impressao.php' ? ' data-monitor-popup' : '' ?> class="<?= $atual === $arq || ($arq === 'comandas.php' && $atual === 'comanda.php') ? 'active' : '' ?>"><i class="bi <?= $ico ?>"></i><span><?= $label ?></span></a>
+      <?php endforeach; ?>
+    </nav>
+    <div class="user-box"><small><?= e($u['nome'] ?? '') ?> • <?= e(Auth::NIVEIS[$u['nivel'] ?? 'garcom'] ?? '') ?></small>
+      <a href="<?= url('logout.php') ?>"><i class="bi bi-box-arrow-right"></i><span>Sair</span></a></div>
+  </aside>
+  <main class="content">
+  <?php if ($f = flash()): ?><div class="aviso-fundo"><div class="aviso-central" role="status" aria-live="polite"><span><?= e($f[0]) ?></span><button type="button" class="aviso-fechar" aria-label="Fechar aviso">&times;</button></div></div><?php endif; ?>

@@ -1,0 +1,6 @@
+*.sql.bak
+config.local.php
+.env
+*.pem
+*.key
+dados-producao/
