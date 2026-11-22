@@ -1,4 +1,4 @@
-<#
+﻿<#
  Teste de aceitação pós-instalação (rodar como Administrador). Imprime PASS/FAIL e grava logs\teste-instalacao.json.
  Uso: testar-instalacao.ps1 [-PortaHttp 8080] [-PortaDb 3307] [-SemBackup] [-LanEsperada]
 #>

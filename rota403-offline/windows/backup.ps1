@@ -1,4 +1,4 @@
-<#
+﻿<#
  Backup do Rota 403 (banco + uploads + chave de criptografia) em um .zip verificável.
  Uso: backup.ps1 [-Motivo diario|manual|pre-atualizacao|pre-restauracao] [-Destino PASTA_EXTRA] [-Retencao 30] [-SemVerificar] [-Agendar]
  O zip contém a chave que decifra nomes de usuários: trate-o como dado sensível (a pasta backups só é acessível a SYSTEM/Admins).

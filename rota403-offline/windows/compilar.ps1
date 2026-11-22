@@ -1,4 +1,4 @@
-<#
+﻿<#
  Compila o instalador Rota403-Offline-Setup.exe NUM WINDOWS 10/11 x64 com internet (só para compilar).
  Uso (PowerShell como Administrador, na pasta do projeto):
      powershell -ExecutionPolicy Bypass -File windows\compilar.ps1 -TravarHashes     # 1ª vez: baixa, calcula e grava os hashes
@@ -27,6 +27,7 @@ Write-Host '  OK'
 Passo '2/7 Baixar e verificar runtimes (PHP, MariaDB, Caddy, WinSW, VC++)'
 $rt = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'runtimes.json') -Encoding UTF8 | ConvertFrom-Json
 $alterou = $false
+$arquivos = @{}; $hashes = @{}
 foreach ($nome in 'php', 'mariadb', 'caddy', 'winsw', 'vcredist') {
     $r = $rt.$nome
     $arq = if ($r.PSObject.Properties['arquivo']) { $r.arquivo } else { Split-Path -Leaf ([uri]$r.url).AbsolutePath }
@@ -42,29 +43,31 @@ foreach ($nome in 'php', 'mariadb', 'caddy', 'winsw', 'vcredist') {
         if ($r.sha256.ToLower() -ne $h) { throw "HASH DIFERENTE para $nome! esperado $($r.sha256) obtido $h. Não vou compilar." }
         Write-Host ("  {0}: hash confere" -f $nome)
     } elseif ($TravarHashes) {
-        $r.sha256 = $h; $alterou = $true; Write-Host ("  {0}: hash TRAVADO {1}  <- confira com a página oficial do projeto" -f $nome, $h)
+        $hashes[$nome] = $h; $alterou = $true; Write-Host ("  {0}: hash TRAVADO {1}  <- confira com a página oficial do projeto" -f $nome, $h)
     } else { throw "Hash de $nome não travado. Rode com -TravarHashes uma vez, confira com a fonte oficial e faça commit de runtimes.json." }
-    $r | Add-Member -NotePropertyName _arquivo -NotePropertyValue $dest -Force
+    $arquivos[$nome] = $dest
 }
 if ($alterou) {
-    $limpo = $rt | ConvertTo-Json -Depth 5
-    $limpo = $limpo -replace '\s*"_arquivo":\s*"[^"]*",?', ''     # não grava caminhos locais
-    $rt2 = $limpo | ConvertFrom-Json
-    $rt2 | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'runtimes.json') -Encoding UTF8
+    # regrava a partir do arquivo ORIGINAL, só preenchendo os hashes novos
+    $orig = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'runtimes.json') -Encoding UTF8 | ConvertFrom-Json
+    foreach ($k in $hashes.Keys) { $orig.$k.sha256 = $hashes[$k] }
+    $json = $orig | ConvertTo-Json -Depth 5
+    [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot 'runtimes.json'), $json, (New-Object System.Text.UTF8Encoding($true)))
+    Write-Host '  runtimes.json atualizado com os hashes. CONFIRA-OS com os sites oficiais antes de distribuir o instalador.'
 }
 
 Passo '3/7 Montar pasta de distribuição (build\stage)'
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 $rtDir = Join-Path $stage 'runtime'; New-Item -ItemType Directory -Path $rtDir | Out-Null
-Expand-Archive -LiteralPath $rt.php._arquivo -DestinationPath (Join-Path $rtDir 'php')
+Expand-Archive -LiteralPath $arquivos['php'] -DestinationPath (Join-Path $rtDir 'php')
 $tmpM = Join-Path $build 'tmp-maria'; if (Test-Path $tmpM) { Remove-Item -Recurse -Force $tmpM }
-Expand-Archive -LiteralPath $rt.mariadb._arquivo -DestinationPath $tmpM
+Expand-Archive -LiteralPath $arquivos['mariadb'] -DestinationPath $tmpM
 $topo = Get-ChildItem $tmpM -Directory | Select-Object -First 1
 Move-Item -LiteralPath $topo.FullName -Destination (Join-Path $rtDir 'mariadb'); Remove-Item -Recurse -Force $tmpM
 foreach ($lixo in 'data', 'mysql-test', 'sql-bench', 'debug') { $p = Join-Path $rtDir "mariadb\$lixo"; if (Test-Path $p) { Remove-Item -Recurse -Force $p } }
-Expand-Archive -LiteralPath $rt.caddy._arquivo -DestinationPath (Join-Path $rtDir 'caddy')
-New-Item -ItemType Directory -Path (Join-Path $rtDir 'winsw') | Out-Null; Copy-Item $rt.winsw._arquivo (Join-Path $rtDir 'winsw\WinSW-x64.exe')
-New-Item -ItemType Directory -Path (Join-Path $rtDir 'vcredist') | Out-Null; Copy-Item $rt.vcredist._arquivo (Join-Path $rtDir 'vcredist\vc_redist.x64.exe')
+Expand-Archive -LiteralPath $arquivos['caddy'] -DestinationPath (Join-Path $rtDir 'caddy')
+New-Item -ItemType Directory -Path (Join-Path $rtDir 'winsw') | Out-Null; Copy-Item $arquivos['winsw'] (Join-Path $rtDir 'winsw\WinSW-x64.exe')
+New-Item -ItemType Directory -Path (Join-Path $rtDir 'vcredist') | Out-Null; Copy-Item $arquivos['vcredist'] (Join-Path $rtDir 'vcredist\vc_redist.x64.exe')
 # aplicação (sem segredos, sem dados, sem scripts perigosos)
 $app = Join-Path $stage 'app'
 & robocopy.exe (Join-Path $raiz 'app') $app /E /NFL /NDL /NJH /NJS /XD tests QZ_WINDOWS storage /XF config.local.php chave_seguranca.php ZERAR_VENDAS_E_ESTOQUE.sql 'ATUALIZACAO_*.txt' *.pem *.key *.log | Out-Null

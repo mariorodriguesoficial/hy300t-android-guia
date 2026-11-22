@@ -1,4 +1,4 @@
-<#
+﻿<#
  Instalação/reparo do Rota 403 (executado pelo instalador, como Administrador).
  Idempotente: pode rodar de novo (reparo/atualização) sem apagar dados.
  Admin inicial: o instalador grava um JSON temporário protegido; este script usa e APAGA.

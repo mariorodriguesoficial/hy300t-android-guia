@@ -1,4 +1,4 @@
-<#
+﻿<#
  Restaura um backup (.zip do backup.ps1). DESTRUTIVO: substitui o banco atual. Antes faz um backup 'pre-restauracao'.
  Uso: restaurar.ps1 -Arquivo C:\...\rota403-AAAA....zip [-Confirmar RESTAURAR]
 #>

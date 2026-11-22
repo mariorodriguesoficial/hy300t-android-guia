@@ -1,4 +1,4 @@
-<#
+﻿<#
  Habilita/desabilita o acesso dos celulares (HTTPS) pela rede local. Padrão da instalação: DESABILITADO.
  Regra do Windows Firewall: somente a porta HTTPS, somente perfil de rede PRIVADO, somente sub-rede local. Nunca abre o banco nem a porta HTTP.
 #>

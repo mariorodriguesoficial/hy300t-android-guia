@@ -1,4 +1,4 @@
-# Funções comuns dos scripts do Rota 403 (PowerShell 5.1). Use: . "$PSScriptRoot\lib.ps1"
+﻿# Funções comuns dos scripts do Rota 403 (PowerShell 5.1). Use: . "$PSScriptRoot\lib.ps1"
 Set-StrictMode -Version 2
 $ErrorActionPreference = 'Stop'
 

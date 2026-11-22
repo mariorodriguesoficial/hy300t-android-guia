@@ -1,4 +1,4 @@
-<# Supervisor do servidor web (rodado como serviço pelo WinSW): sobe um pool de php-cgi + Caddy e reinicia quem cair. #>
+﻿<# Supervisor do servidor web (rodado como serviço pelo WinSW): sobe um pool de php-cgi + Caddy e reinicia quem cair. #>
 param([string]$Raiz = (Split-Path -Parent $PSScriptRoot), [string]$Dados = (Join-Path $env:ProgramData 'Rota403'), [int[]]$Portas = @(9001, 9002, 9003, 9004))
 . "$PSScriptRoot\lib.ps1"
 $C = Get-Caminhos $Raiz $Dados

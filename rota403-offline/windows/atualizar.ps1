@@ -1,4 +1,4 @@
-<#
+﻿<#
  Atualização (chamada pelo instalador). -Fase Antes: para serviços e faz backup. -Fase Depois: migra o banco, sobe serviços e checa saúde.
  Dados, uploads, config.local.php e chave NUNCA são sobrescritos (não fazem parte dos arquivos do instalador).
  Se a checagem falhar, o backup 'pre-atualizacao' continua disponível para restaurar (restaurar.ps1).

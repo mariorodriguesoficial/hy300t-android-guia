@@ -1,4 +1,4 @@
-; Rota 403 Offline — instalador (Inno Setup 6). Compile com windows\compilar.ps1 (define Versao e Origem).
+﻿; Rota 403 Offline — instalador (Inno Setup 6). Compile com windows\compilar.ps1 (define Versao e Origem).
 #ifndef Versao
   #define Versao "1.0.0"
 #endif

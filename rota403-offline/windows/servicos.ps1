@@ -1,4 +1,4 @@
-<#
+﻿<#
  Instala/remove/inicia/para os serviços do Rota 403 usando WinSW (MariaDB usa o serviço nativo criado pelo mariadb-install-db):
    Rota403DB   MariaDB (127.0.0.1)
    Rota403Web  supervisor: pool de php-cgi + Caddy (HTTP 127.0.0.1 e, opcional, HTTPS na LAN)
