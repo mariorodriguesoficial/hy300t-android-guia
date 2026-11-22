@@ -74,8 +74,7 @@ try {
                    "CREATE USER IF NOT EXISTS 'rota403'@'127.0.0.1' IDENTIFIED BY '$appPw'; " +
                    "GRANT ALL PRIVILEGES ON rota403.* TO 'rota403'@'127.0.0.1'; FLUSH PRIVILEGES;"
             $null = Executar $cli @('-h', '127.0.0.1', '-P', "$PortaDb", '-u', 'root', '-e', $sql) 'criação do banco'
-            Get-Content -Raw -LiteralPath (Join-Path $C.Raiz 'database\schema.sql') -Encoding UTF8 | & $cli -h 127.0.0.1 -P $PortaDb -u root rota403
-            if ($LASTEXITCODE -ne 0) { throw 'Falha ao carregar o esquema do banco.' }
+            Importar-Sql $cli @('-h', '127.0.0.1', '-P', "$PortaDb", '-u', 'root', '--default-character-set=utf8mb4', 'rota403') (Join-Path $C.Raiz 'database\schema.sql')
             $cfg = @"
 <?php
 // Gerado pelo instalador do Rota 403. NÃO versionar, NÃO compartilhar.

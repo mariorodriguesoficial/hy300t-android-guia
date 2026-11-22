@@ -13,10 +13,15 @@ function T([string]$Nome, [scriptblock]$Teste) {
     $null = $res.Add([pscustomobject]@{ teste = $Nome; resultado = $(if ($ok) { 'PASS' } else { 'FAIL' }); detalhe = $det })
     Write-Host ('{0} {1} {2}' -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $Nome, $det)
 }
-function Escuta([int]$Porta) { @(Get-NetTCPConnection -State Listen -LocalPort $Porta -ErrorAction SilentlyContinue) }
+function Escuta([int]$Porta) { , @(Get-NetTCPConnection -State Listen -LocalPort $Porta -ErrorAction SilentlyContinue) }
 function Http([string]$Caminho) {
     try { $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:{0}{1}" -f $PortaHttp, $Caminho) -TimeoutSec 20 -MaximumRedirection 0 -ErrorAction Stop; return [pscustomobject]@{ Cod = [int]$r.StatusCode; Corpo = [string]$r.Content; Cab = $r.Headers } }
-    catch { $resp = $_.Exception.Response; if ($resp) { return [pscustomobject]@{ Cod = [int]$resp.StatusCode; Corpo = '' } } else { return [pscustomobject]@{ Cod = 0; Corpo = '' } } }
+    catch {
+        $ex = $_.Exception; $prop = $ex.PSObject.Properties['Response']
+        if ($prop -and $prop.Value) { return [pscustomobject]@{ Cod = [int]$prop.Value.StatusCode; Corpo = ''; Cab = @{} } }
+        if ($ex.Message -match 'redirec|redirect|moved|Found|máximo|maximum') { return [pscustomobject]@{ Cod = 302; Corpo = ''; Cab = @{} } }   # MaximumRedirection=0 no PS 5.1
+        return [pscustomobject]@{ Cod = 0; Corpo = ''; Cab = @{} }
+    }
 }
 $php = Join-Path $C.Php 'php.exe'; $ini = Join-Path $C.Php 'php.ini'
 
@@ -24,22 +29,27 @@ $php = Join-Path $C.Php 'php.exe'; $ini = Join-Path $C.Php 'php.ini'
 foreach ($s in 'Rota403DB', 'Rota403Web') { T "Serviço $s em execução" { (Get-Service $s -ErrorAction Stop).Status -eq 'Running' } }
 T 'Serviço Rota403Sync instalado' { [bool](Get-Service Rota403Sync -ErrorAction SilentlyContinue) }
 T 'Serviços iniciam automaticamente' { (@('Rota403DB', 'Rota403Web') | ForEach-Object { (Get-Service $_).StartType -eq 'Automatic' }) -notcontains $false }
-T 'Serviços NÃO rodam como SYSTEM/Administrador' { $r = Get-CimInstance Win32_Service -Filter "Name='Rota403Web' OR Name='Rota403DB'"; ($r | Where-Object { $_.StartName -match 'LocalSystem|Administrator' }).Count -eq 0 }
+T 'Serviços NÃO rodam como SYSTEM/Administrador' { $r = @(Get-CimInstance Win32_Service -Filter "Name='Rota403Web' OR Name='Rota403DB' OR Name='Rota403Sync'"); $ruim = @($r | Where-Object { $_.StartName -match 'LocalSystem|Administrator' }); @{ Ok = ($ruim.Count -eq 0); Det = (($r | ForEach-Object { $_.Name + '=' + $_.StartName }) -join ', ') } }
 # ---- rede: nada exposto fora do loopback
-T "MariaDB escuta só em 127.0.0.1:$PortaDb" { $l = Escuta $PortaDb; ($l.Count -ge 1) -and (@($l | Where-Object { $_.LocalAddress -ne '127.0.0.1' }).Count -eq 0) }
-T "HTTP local escuta só em 127.0.0.1:$PortaHttp" { $l = Escuta $PortaHttp; ($l.Count -ge 1) -and (@($l | Where-Object { $_.LocalAddress -ne '127.0.0.1' }).Count -eq 0) }
-T 'Pool php-cgi só em loopback' { $m = @(9001, 9002, 9003, 9004 | ForEach-Object { Escuta $_ } | Where-Object { $_.LocalAddress -ne '127.0.0.1' }); $m.Count -eq 0 }
+T "MariaDB escuta só em 127.0.0.1:$PortaDb" { $l = @(Escuta $PortaDb); @{ Ok = (($l.Count -ge 1) -and (@($l | Where-Object { $_.LocalAddress -ne '127.0.0.1' }).Count -eq 0)); Det = (($l | ForEach-Object { $_.LocalAddress }) -join ',') } }
+T "HTTP local escuta só em 127.0.0.1:$PortaHttp" { $l = @(Escuta $PortaHttp); @{ Ok = (($l.Count -ge 1) -and (@($l | Where-Object { $_.LocalAddress -ne '127.0.0.1' }).Count -eq 0)); Det = (($l | ForEach-Object { $_.LocalAddress }) -join ',') } }
+T 'Pool php-cgi só em loopback' { $m = @(9001, 9002, 9003, 9004 | ForEach-Object { Get-NetTCPConnection -State Listen -LocalPort $_ -ErrorAction SilentlyContinue } | Where-Object { $_.LocalAddress -ne '127.0.0.1' }); $m.Count -eq 0 }
 if ($LanEsperada) {
-    T "HTTPS LAN escutando em $PortaHttps com regra de firewall só Privado/sub-rede" { $r = Get-NetFirewallRule -DisplayName 'Rota403 HTTPS (LAN)' -ErrorAction Stop; $f = $r | Get-NetFirewallAddressFilter; ((Escuta $PortaHttps).Count -ge 1) -and ($r.Profile -eq 'Private') -and ($f.RemoteAddress -eq 'LocalSubnet') }
+    T "HTTPS LAN escutando em $PortaHttps com regra de firewall só Privado/sub-rede" { $r = Get-NetFirewallRule -DisplayName 'Rota403 HTTPS (LAN)' -ErrorAction Stop; $f = $r | Get-NetFirewallAddressFilter; (@(Escuta $PortaHttps).Count -ge 1) -and ($r.Profile -eq 'Private') -and ($f.RemoteAddress -eq 'LocalSubnet') }
 } else {
-    T 'LAN desabilitada: sem regra de firewall e sem porta HTTPS' { (-not (Get-NetFirewallRule -DisplayName 'Rota403 HTTPS (LAN)' -ErrorAction SilentlyContinue)) -and ((Escuta $PortaHttps).Count -eq 0) }
+    T 'LAN desabilitada: sem regra de firewall e sem porta HTTPS' { (-not (Get-NetFirewallRule -DisplayName 'Rota403 HTTPS (LAN)' -ErrorAction SilentlyContinue)) -and (@(Escuta $PortaHttps).Count -eq 0) }
 }
 T 'Nenhuma regra de firewall abre MariaDB ou HTTP' { $x = Get-NetFirewallRule -Direction Inbound -Enabled True -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like 'Rota403*' } | Get-NetFirewallPortFilter | Where-Object { $_.LocalPort -in @("$PortaDb", "$PortaHttp") }; @($x).Count -eq 0 }
 # ---- aplicação
 T 'Tela de login responde 200' { $r = Http '/login'; @{ Ok = ($r.Cod -eq 200 -and $r.Corpo -match 'Rota 403'); Det = "HTTP $($r.Cod)" } }
 T 'config.local.php sem BOM UTF-8 (BOM quebra sessão/cookies)' { $b = [System.IO.File]::ReadAllBytes($C.Config); -not ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF) }
 T 'Login: HTML começa em <!doctype (sem BOM) e define cookie de sessão HttpOnly' { $r = Http '/login'; $ck = [string]$r.Cab['Set-Cookie']; @{ Ok = ($r.Corpo.TrimStart([char]0xFEFF) -eq $r.Corpo) -and ($r.Corpo -match '^\s*<!doctype') -and ($ck -match 'HttpOnly'); Det = $ck } }
-T 'Log do PHP sem avisos "headers already sent"' { $f = Join-Path $C.Logs 'php-error.log'; (-not (Test-Path $f)) -or (-not ((Get-Content $f -Tail 200 -ErrorAction SilentlyContinue) -match 'headers already sent')) }
+T 'PHP não gera avisos "headers already sent" ao abrir páginas' {
+    $f = Join-Path $C.Logs 'php-error.log'
+    $n0 = if (Test-Path $f) { @(Select-String -Path $f -Pattern 'headers already sent').Count } else { 0 }
+    $null = Http '/login'; $null = Http '/api/sync/v1/health'; Start-Sleep -Seconds 1
+    $n1 = if (Test-Path $f) { @(Select-String -Path $f -Pattern 'headers already sent').Count } else { 0 }
+    @{ Ok = ($n1 -eq $n0); Det = "novos avisos: $($n1 - $n0) (antigos no log: $n0)" } }
 T 'Login sem requisições externas (CDN/fontes)' { $r = Http '/login'; -not ($r.Corpo -match '(src|href)=["'']https?://(?!127\.0\.0\.1|localhost)') }
 T 'Manifesto PWA e service worker servidos' { (Http '/manifest.php').Cod -eq 200 -and (Http '/sw.js').Cod -eq 200 }
 foreach ($p in '/config/config.local.php', '/config/chave_seguranca.php', '/includes/Sync.php', '/migrations/001_sync_base.php', '/bin/migrate.php', '/storage/php-error.log') {
@@ -50,7 +60,8 @@ T 'Health da API de sync responde' { (Http '/api/sync/v1/health').Cod -eq 200 }
 # ---- banco e migrações
 $cfg = Ler-ConfigApp $C; $cli = Cliente-Maria $C
 function Sql([string]$q) { $env:MYSQL_PWD = [string]$cfg.DB_PASS; try { (& $cli -h 127.0.0.1 -P $PortaDb -u $cfg.DB_USER -N -B -e $q $cfg.DB_NAME) } finally { Remove-Item Env:\MYSQL_PWD -ErrorAction SilentlyContinue } }
-T 'Esquema na versão 2 (migrações aplicadas)' { (Sql 'SELECT MAX(versao) FROM schema_migrations') -eq '2' }
+T 'Esquema na versão 3 (migrações aplicadas)' { (Sql 'SELECT MAX(versao) FROM schema_migrations') -eq '3' }
+T 'Acentos preservados no banco (formas de pagamento em UTF-8, sem "?")' { @{ Ok = ((Sql "SELECT COUNT(*) FROM formas_pagamento WHERE nome LIKE '%?%'") -eq '0') -and ((Sql "SELECT COUNT(*) FROM formas_pagamento WHERE HEX(nome) LIKE '%C3A3%'") -ge 1); Det = (Sql 'SELECT GROUP_CONCAT(HEX(nome) SEPARATOR " ") FROM formas_pagamento') } }
 T '14 tabelas base + tabelas de sync' { [int](Sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()") -ge 24 }
 T 'Existe pelo menos 1 administrador' { [int](Sql "SELECT COUNT(*) FROM usuarios WHERE nivel='admin' AND ativo=1") -ge 1 }
 T 'Nome do administrador está cifrado (enc1:)' { (Sql "SELECT COUNT(*) FROM usuarios WHERE nome NOT LIKE 'enc1:%'") -eq '0' }
@@ -61,7 +72,7 @@ T 'Triggers de sync presentes' { [int](Sql "SELECT COUNT(*) FROM information_sch
 T 'Pasta secrets sem acesso para Users/Everyone/Authenticated Users' { $a = (& icacls.exe $C.Segredos) -join ' '; -not ($a -match 'BUILTIN\\Users|Everyone|Authenticated Users') }
 T 'config.local.php sem leitura para Users/Everyone' { $a = (& icacls.exe $C.Config) -join ' '; -not ($a -match 'BUILTIN\\Users|Everyone|Authenticated Users') }
 T 'Backups sem acesso para Users/Everyone' { $a = (& icacls.exe $C.Backups) -join ' '; -not ($a -match 'BUILTIN\\Users|Everyone|Authenticated Users') }
-T 'Nenhum arquivo .pem / chave privada QZ na instalação' { @(Get-ChildItem -LiteralPath $C.App -Recurse -Include *.pem, *.key -ErrorAction SilentlyContinue).Count -eq 0 }
+T 'Nenhum arquivo .pem / chave privada QZ na instalação' { $x = @(Get-ChildItem -LiteralPath $C.App -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.pem', '.key' }); @{ Ok = ($x.Count -eq 0); Det = (($x | ForEach-Object { $_.FullName }) -join ', ') } }
 T 'Admin temporário (JSON de senha) não ficou em disco' { @(Get-ChildItem -LiteralPath $env:TEMP -Filter 'rota403-admin-*.json' -ErrorAction SilentlyContinue).Count -eq 0 }
 # ---- sem conexões externas dos processos do sistema
 T 'Processos do Rota 403 sem conexão estabelecida com IP público' {
@@ -81,10 +92,11 @@ T 'Dados persistem após reiniciar serviços' {
 if (-not $SemBackup) {
     T 'Backup manual verificado (restaura em banco temporário)' {
         $antes = @(Get-ChildItem $C.Backups -Filter 'rota403-*teste*.zip' -ErrorAction SilentlyContinue).Count
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'backup.ps1') -Motivo 'teste' -Raiz $C.Raiz -Dados $C.Dados | Out-Null
+        $saidaBkp = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'backup.ps1') -Motivo 'teste' -Raiz $C.Raiz -Dados $C.Dados 2>&1 | Out-String
+        $codBkp = $LASTEXITCODE
         $zip = Get-ChildItem $C.Backups -Filter 'rota403-*teste*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         $mf = $null; if ($zip) { Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [System.IO.Compression.ZipFile]::OpenRead($zip.FullName); try { $e = $z.GetEntry('manifest.json'); $sr = New-Object System.IO.StreamReader($e.Open()); $mf = $sr.ReadToEnd() | ConvertFrom-Json; $sr.Close() } finally { $z.Dispose() } }
-        @{ Ok = ($LASTEXITCODE -eq 0 -and $zip -and $mf.verificado -eq $true); Det = $(if ($zip) { $zip.Name } else { 'sem zip' }) }
+        @{ Ok = ($codBkp -eq 0 -and $zip -and $mf.verificado -eq $true); Det = $(if ($zip) { $zip.Name } else { 'sem zip: ' + ($saidaBkp.Trim() -replace '\s+', ' ') }) }
     }
 }
 $falhas = @($res | Where-Object resultado -eq 'FAIL').Count

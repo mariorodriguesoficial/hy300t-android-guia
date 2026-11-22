@@ -55,8 +55,7 @@ try {
         $env:MYSQL_PWD = Ler-Segredo $segRoot
         try {
             $null = Executar $cli @('-h', $cfg.DB_HOST, '-P', "$($cfg.DB_PORT)", '-u', 'root', '-e', "CREATE DATABASE ``$tmpDb`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci") 'criação do banco de verificação'
-            Get-Content -Raw -LiteralPath $sqlFile -Encoding UTF8 | & $cli -h $cfg.DB_HOST -P $cfg.DB_PORT -u root $tmpDb
-            if ($LASTEXITCODE -ne 0) { throw 'Falha ao restaurar o dump no banco de verificação.' }
+            Importar-Sql $cli @('-h', $cfg.DB_HOST, '-P', "$($cfg.DB_PORT)", '-u', 'root', '--default-character-set=utf8mb4', $tmpDb) $sqlFile
             $reais = @{}
             foreach ($t in $antes.Keys) {
                 $existe = (& $cli -h $cfg.DB_HOST -P $cfg.DB_PORT -u root -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$tmpDb' AND table_name='$t'")

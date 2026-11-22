@@ -72,3 +72,17 @@ function Ler-ConfigApp($C) {
     $json | ConvertFrom-Json
 }
 function Cliente-Maria($C) { $e = Join-Path $C.Maria 'bin\mariadb.exe'; if (-not (Test-Path $e)) { $e = Join-Path $C.Maria 'bin\mysql.exe' }; $e }
+
+# Importa um arquivo .sql no cliente mariadb enviando os BYTES do arquivo direto na entrada padrão.
+# (Nunca use "Get-Content | mariadb": o PowerShell 5.1 converte o pipe para ASCII e troca acentos por "?".)
+function Importar-Sql([string]$Cli, [string[]]$ArgsCli, [string]$Arquivo) {
+    $quoted = $ArgsCli | ForEach-Object { if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ } }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $Cli; $psi.Arguments = ($quoted -join ' ')
+    $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardError = $true; $psi.RedirectStandardOutput = $true; $psi.CreateNoWindow = $true
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $fs = [System.IO.File]::OpenRead($Arquivo)
+    try { $fs.CopyTo($p.StandardInput.BaseStream) } finally { $fs.Dispose(); $p.StandardInput.Close() }
+    $err = $p.StandardError.ReadToEnd(); $null = $p.StandardOutput.ReadToEnd(); $p.WaitForExit()
+    if ($p.ExitCode -ne 0) { throw ('Falha ao importar SQL (código {0}): {1}' -f $p.ExitCode, $err.Trim()) }
+}

@@ -33,8 +33,7 @@ try {
     try {
         $db = $cfg.DB_NAME
         $null = Executar $cli @('-h', $cfg.DB_HOST, '-P', "$($cfg.DB_PORT)", '-u', 'root', '-e', "DROP DATABASE IF EXISTS ``$db``; CREATE DATABASE ``$db`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;") 'recriação do banco'
-        Get-Content -Raw -LiteralPath $sqlFile -Encoding UTF8 | & $cli -h $cfg.DB_HOST -P $cfg.DB_PORT -u root $db
-        if ($LASTEXITCODE -ne 0) { throw 'Falha ao importar o dump.' }
+        Importar-Sql $cli @('-h', $cfg.DB_HOST, '-P', "$($cfg.DB_PORT)", '-u', 'root', '--default-character-set=utf8mb4', $db) $sqlFile
         $null = Executar $cli @('-h', $cfg.DB_HOST, '-P', "$($cfg.DB_PORT)", '-u', 'root', '-e', "GRANT ALL PRIVILEGES ON ``$db``.* TO 'rota403'@'127.0.0.1'; FLUSH PRIVILEGES;") 'permissões'
         # confere contagens
         $erros = @()

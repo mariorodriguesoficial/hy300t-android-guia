@@ -50,7 +50,7 @@ class TestMigracao(unittest.TestCase):
     def test_idempotente_e_uuid_unico(self):
         out = subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True, text=True).stdout
         self.assertNotIn('Aplicada', out)           # segunda execução não reaplica
-        self.assertEqual(val('select max(versao) from schema_migrations'), '2')
+        self.assertEqual(val('select max(versao) from schema_migrations'), '3')
         for t in ['caixas','categorias','comandas','comanda_itens','comanda_pagamentos','pedidos','produtos','formas_pagamento']:
             self.assertEqual(val(f'select count(*)-count(distinct uuid) from {t}'), '0', t)
             self.assertEqual(val(f'select count(*) from {t} where uuid is null'), '0', t)
@@ -62,7 +62,17 @@ class TestMigracao(unittest.TestCase):
         # restaura: recalcula via PHP
         sql("delete from schema_migrations where versao=2")
         subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True)
-        self.assertEqual(val('select max(versao) from schema_migrations'), '2')
+        self.assertEqual(val('select max(versao) from schema_migrations'), '3')
+
+class TestAcentosSeed(unittest.TestCase):
+    def test_migracao_003_repara_acentos_corrompidos(self):
+        sql("update formas_pagamento set nome='Cart?o de d?bito' where hex(nome) like '%C3A3%' and hex(nome) like '%C3A9%' and nome like 'Cart%bito'")
+        sql("update formas_pagamento set nome='Cart?o de cr?dito' where hex(nome) like '%C3A3%' and hex(nome) like '%C3A9%' and nome like 'Cart%dito'")
+        self.assertEqual(val("select count(*) from formas_pagamento where nome like '%?%'"), '2')
+        sql("delete from schema_migrations where versao=3")
+        subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True)
+        self.assertEqual(val("select count(*) from formas_pagamento where nome like '%?%'"), '0')
+        self.assertEqual(val("select hex(nome) from formas_pagamento where id=3"), '43617274C3A36F2064652064C3A96269746F')   # 'Cartão de débito' em UTF-8
 
 class TestConfigComBom(unittest.TestCase):
     def test_bom_no_config_local_nao_quebra_cabecalhos(self):
