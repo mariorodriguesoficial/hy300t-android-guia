@@ -297,3 +297,16 @@ kbd.atalho{font-size:.7em;padding:1px 5px;border-radius:4px;background:rgba(0,0,
 .btn-minus-item:hover,.btn-minus-item:focus{color:#a71d2a;outline:none}
 .btn-plus-item:disabled,.btn-minus-item:disabled{color:#b3b9c0;cursor:default;pointer-events:none}
 .sep-cx{font-weight:700;margin:0 .45rem}
+
+/* ===== PWA do garçom: resumo do pedido e faixa offline ===== */
+#faixaOffline { position: sticky; top: 0; z-index: 1200; padding: 10px 14px; background: #7a1f10; color: #fff; text-align: center; font-weight: 700; }
+.resumo-fundo { position: fixed; inset: 0; z-index: 1300; background: rgba(31,24,19,.6); display: flex; align-items: flex-end; justify-content: center; }
+.resumo { width: min(520px, 100vw); max-height: 88vh; display: flex; flex-direction: column; background: #fff; border-radius: 18px 18px 0 0; padding: 16px; box-shadow: 0 -10px 40px rgba(0,0,0,.3); }
+.resumo h2 { margin: 0 0 4px; }
+.resumo-cmd { font-weight: 700; color: var(--brasa); margin-bottom: 8px; }
+.resumo-lista { overflow: auto; flex: 1; border-top: 1px solid #e6dfd3; }
+.resumo-item { display: grid; grid-template-columns: 4.5em 1fr auto; gap: 8px; padding: 10px 0; border-bottom: 1px solid #efe8dc; align-items: baseline; }
+.resumo-item .rq { font-weight: 800; } .resumo-item small { display: block; color: #6b5f52; }
+.resumo-item .rv { font-weight: 700; white-space: nowrap; }
+.resumo-total { display: flex; justify-content: space-between; font-size: 1.5rem; padding: 12px 0; } .resumo-total b { color: var(--brasa); }
+.resumo-acoes { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; } .resumo-acoes .btn { min-height: 52px; font-weight: 700; }

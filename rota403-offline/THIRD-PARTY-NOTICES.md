@@ -15,3 +15,5 @@ Bibliotecas servidas localmente em `app/assets/vendor/` (versões fixas, sem CDN
 Textos de licença ficam ao lado de cada biblioteca quando fornecidos pelo pacote.
 Os arquivos `app/assets/produtos/*.jpg` são imagens do projeto original; **a origem/licença delas não foi verificada** — confirmar com o proprietário.
 PHP, MariaDB, Inno Setup e WebView2 serão acrescentados quando empacotados.
+
+Previsto para empacotamento (Fase 1, ainda não incluído no repositório): **Caddy** 2.x (Apache-2.0) como proxy HTTPS da LAN — testado com o pacote Ubuntu 2.6.2.

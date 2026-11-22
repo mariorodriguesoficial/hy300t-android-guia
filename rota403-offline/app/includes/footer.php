@@ -12,6 +12,30 @@ document.querySelectorAll('[data-monitor-popup]').forEach(function (link) {
     if (monitor) monitor.focus(); else window.location.href = link.href;
   });
 });
+// ===== PWA: service worker (somente em contexto seguro: HTTPS ou localhost) e botão "Instalar app" =====
+(function () {
+  if (window.isSecureContext && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register(BASE_URL + '/sw.js', { scope: BASE_URL + '/' }).catch(function () {});
+  }
+  var evInstalar = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); evInstalar = e;
+    var b = document.getElementById('btnInstalarApp'); if (b) b.hidden = false;
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('#btnInstalarApp'); if (!b || !evInstalar) return;
+    evInstalar.prompt(); evInstalar.userChoice.finally(function () { evInstalar = null; b.hidden = true; });
+  });
+  window.addEventListener('appinstalled', function () { var b = document.getElementById('btnInstalarApp'); if (b) b.hidden = true; });
+  // Faixa de aviso quando o celular perde o Wi-Fi do restaurante
+  function faixa() {
+    var f = document.getElementById('faixaOffline');
+    if (navigator.onLine === false) {
+      if (!f) { f = document.createElement('div'); f.id = 'faixaOffline'; f.setAttribute('role', 'alert'); f.textContent = 'Sem conexão com o caixa — pedidos NÃO serão enviados'; document.body.prepend(f); }
+    } else if (f) f.remove();
+  }
+  window.addEventListener('online', faixa); window.addEventListener('offline', faixa); faixa();
+})();
 // Imprime uma página (80mm) num iframe oculto
 window.imprimirUrl = function (path) {
   return new Promise(function (resolve, reject) {

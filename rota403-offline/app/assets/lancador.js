@@ -1,5 +1,7 @@
 // Seleção de produtos + envio do pedido (cozinha/balcão)
-function Lancador(el, comandaId, garcom, onEnviado) {
+function Lancador(el, comandaId, garcom, onEnviado, opts) {
+  opts = opts || {};
+  var enviando = false;
   var produtos = window.PRODUTOS || [];
   var carrinho = {}; // id -> {p, q, obs}
   var cat = 'Todos', busca = '';
@@ -75,7 +77,8 @@ function Lancador(el, comandaId, garcom, onEnviado) {
         '<input class="form-control form-control-sm mt-1" placeholder="Observação (ex: sem cebola)" data-obs="' + l.p.id + '" value="' + esc(l.obs) + '"></div>';
     }).join('') : '<p class="small muted">Toque nos produtos para adicionar.</p>';
     $('total').textContent = brl(linhas.reduce(function (s, l) { return s + Math.round(l.p.preco * l.q * 100) / 100; }, 0));
-    $('enviar').disabled = !linhas.length;
+    $('enviar').disabled = !linhas.length || enviando;
+    var be = $('benviar'); if (be) be.disabled = enviando;
     $('barra').hidden = !linhas.length;
     $('bqtd').textContent = linhas.length + (linhas.length === 1 ? ' item no pedido' : ' itens no pedido');
     $('btotal').textContent = $('total').textContent;
@@ -111,23 +114,58 @@ function Lancador(el, comandaId, garcom, onEnviado) {
     if (p && p.unidade === 'kg') { mostrarAviso('Produto por kg: digite ' + txt + '*peso e Enter.'); return; }
     if (p) { add(p, 1); busca = ''; e.target.value = ''; render(); }
   });
-  $('enviar').addEventListener('click', function () {
-    var btn = this; btn.disabled = true;
+  // ===== Resumo antes de enviar (PWA do garçom) =====
+  function resumo() {
+    var linhas = Object.keys(carrinho).map(function (k) { return carrinho[k]; });
+    var total = linhas.reduce(function (t, l) { return t + Math.round(l.p.preco * l.q * 100) / 100; }, 0);
+    var f = document.createElement('div'); f.className = 'resumo-fundo';
+    f.innerHTML = '<div class="resumo" role="dialog" aria-modal="true" aria-label="Resumo do pedido"><h2>Confirmar pedido</h2>' +
+      (opts.rotulo ? '<div class="resumo-cmd">' + esc(opts.rotulo) + '</div>' : '') + '<div class="resumo-lista">' +
+      linhas.map(function (l) {
+        return '<div class="resumo-item"><span class="rq">' + (l.kg ? fmtKg(l.q) : l.q + '×') + '</span><span class="rn">' + esc(l.p.nome) +
+          (l.obs ? '<small>» ' + esc(l.obs) + '</small>' : '') + '</span><span class="rv">' + brl(Math.round(l.p.preco * l.q * 100) / 100) + '</span></div>';
+      }).join('') + '</div><div class="resumo-total"><span>Total</span><b>' + brl(total) + '</b></div>' +
+      '<div class="resumo-acoes"><button type="button" class="btn btn-outline-secondary" data-x="voltar">Voltar</button>' +
+      '<button type="button" class="btn btn-ember" data-x="ok"><i class="bi bi-send"></i> Confirmar e enviar</button></div></div>';
+    f.addEventListener('click', function (e) {
+      var x = e.target.closest('button'); if (e.target === f) { f.remove(); return; } if (!x) return;
+      if (x.dataset.x === 'voltar') f.remove();
+      if (x.dataset.x === 'ok') { x.disabled = true; f.remove(); enviar(); }   // desabilita: toque duplo não reenvia
+    });
+    document.body.appendChild(f);
+  }
+
+  function enviar() {
+    if (enviando) return;
+    if (window.navigator && navigator.onLine === false) { mostrarAviso('Sem conexão com o caixa. O pedido NÃO foi enviado.'); return; }
+    enviando = true; render(); $('enviar').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando…';
     var linhas = Object.keys(carrinho).map(function (k) { return { produto_id: carrinho[k].p.id, quantidade: carrinho[k].q, observacao: carrinho[k].obs }; });
     // Chave idempotente: mesma chave em reenvio do MESMO carrinho (retry/timeout); carrinho diferente = chave nova
     var assinatura = JSON.stringify([comandaId, linhas]);
     if (!window.__envio || window.__envio.assinatura !== assinatura) {
       window.__envio = { assinatura: assinatura, chave: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('k' + Date.now() + Math.random().toString(16).slice(2)) };
     }
+    var ctl = window.AbortController ? new AbortController() : null, timer = setTimeout(function () { if (ctl) ctl.abort(); }, 15000);
     fetch(BASE_URL + '/api/lancar.php', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF },
+      method: 'POST', credentials: 'same-origin', signal: ctl ? ctl.signal : undefined, headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF },
       body: JSON.stringify({ comanda_id: comandaId, garcom: garcom, itens: linhas, chave: window.__envio.chave })
-    }).then(function (r) { return r.json(); }).then(function (r) {
-      if (r.erro) { mostrarAviso(r.erro); btn.disabled = false; return; }
-      carrinho = {}; window.__envio = null; render();
-      if (onEnviado) onEnviado();
-      else mostrarAviso('Itens adicionados à comanda!');
-    }).catch(function () { mostrarAviso('Falha de conexão. Tente novamente.'); btn.disabled = false; });
-  });
+    }).then(function (resp) {
+      clearTimeout(timer);
+      if (resp.status === 401 || resp.status === 419) throw { sessao: true };
+      return resp.json().then(function (j) { return j; }, function () { throw { rede: true }; });
+    }).then(function (r) {
+      if (r && r.sucesso) {             // SÓ aqui o pedido conta como enviado (confirmação do servidor)
+        carrinho = {}; window.__envio = null; enviando = false; render();
+        if (onEnviado) onEnviado(); else mostrarAviso('Pedido enviado!');
+      } else mostrarAviso((r && r.erro) || 'O servidor não confirmou o pedido. Tente novamente.');
+    }).catch(function (e) {
+      clearTimeout(timer);
+      if (e && e.sessao) { mostrarAviso('Sua sessão expirou. O pedido NÃO foi enviado. Entre novamente.'); setTimeout(function () { location.href = BASE_URL + '/login'; }, 1800); }
+      else mostrarAviso('Sem confirmação do caixa. O pedido pode NÃO ter sido enviado. Toque em Enviar para tentar de novo — não duplica.');
+    }).then(function () {
+      enviando = false; render(); $('enviar').innerHTML = '<i class="bi bi-send"></i> Enviar pedido';
+    });
+  }
+  $('enviar').addEventListener('click', function () { if (enviando) return; if (opts.resumo) resumo(); else enviar(); });
   render();
 }

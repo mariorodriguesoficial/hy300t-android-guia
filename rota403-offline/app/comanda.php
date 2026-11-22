@@ -64,7 +64,7 @@ require __DIR__ . '/includes/header.php';
   <div id="lancador"></div>
 <?php endif;
 $produtos = produtosLancador();
-$scripts = '<script>window.PRODUTOS=' . json_encode($produtos, JSON_UNESCAPED_UNICODE) . ';</script><script src="' . url('assets/lancador.js?v=kg5') . '"></script>';
+$scripts = '<script>window.PRODUTOS=' . json_encode($produtos, JSON_UNESCAPED_UNICODE) . ';</script><script src="' . url('assets/lancador.js?v=pwa1') . '"></script>';
 if ($aberta) $scripts .= '<script>Lancador(document.getElementById("lancador"), ' . $id . ', ' . json_encode($u['nome']) . ', function(){ location.reload(); });</script>';
 if ($aberta && $u['nivel'] !== 'garcom') $scripts .= '<script>(function(){var k="focoCmd' . $id . '";if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,"1");var i=document.querySelector("#lancador [data-r=busca]");if(i)i.focus();})();</script>';
 if ($aberta) $scripts .= '<script>window.ATUALIZAR_COMANDAS={comandaId:' . $id . ',sair:BASE_URL+"/comandas.php"};</script>' . '<script src="' . url('assets/atualizar.js?v=2') . '"></script>';

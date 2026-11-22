@@ -20,6 +20,10 @@ $menu = [
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf" content="<?= csrf_token() ?>">
 <title><?= e($titulo ?? 'Comandas') ?> — Rota 403</title>
+<link rel="manifest" href="<?= url('manifest.php') ?>">
+<meta name="theme-color" content="#d9530f">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="<?= url('assets/pwa/apple-touch-icon.png') ?>">
 <link href="<?= url('assets/vendor/fonts/fonts.css') ?>" rel="stylesheet">
 <link href="<?= url('assets/vendor/bootstrap/bootstrap.min.css') ?>" rel="stylesheet">
 <link href="<?= url('assets/vendor/bootstrap-icons/bootstrap-icons.min.css') ?>" rel="stylesheet">

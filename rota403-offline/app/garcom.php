@@ -17,9 +17,15 @@ $titulo = 'Pedidos';
 require __DIR__ . '/includes/header.php';
 ?>
 <h1>Pedidos</h1>
+<button type="button" id="btnInstalarApp" class="btn btn-outline-primary w-100 mb-3" hidden><i class="bi bi-download"></i> Instalar o app na tela inicial</button>
 <?php if (!$c): ?>
+  <button type="button" id="btnCamera" class="btn btn-warning btn-lg w-100 mb-2"><i class="bi bi-camera"></i> Ler comanda com a câmera</button>
+  <div id="cameraBox" class="card-r p-2 mb-3" style="display:none">
+    <div id="cameraLeitor" style="width:100%"></div>
+    <button type="button" id="btnFecharCamera" class="btn btn-outline-secondary w-100 mt-2"><i class="bi bi-x-lg"></i> Fechar câmera</button>
+  </div>
   <p class="muted mb-1">Escolha a comanda:</p>
-  <input type="search" class="form-control form-control-lg mb-3 busca-cmd" placeholder="Procurar mesa, nome do cliente ou nº da comanda" autocomplete="off" oninput="filtrarComandas(this)">
+  <input type="search" class="form-control form-control-lg mb-3 busca-cmd" placeholder="Procurar mesa, cliente ou nº" autocomplete="off" oninput="filtrarComandas(this)">
   <div class="grid-cmd">
     <?php foreach ($comandas as $x): ?>
       <div class="cmd-item" data-busca="<?= e(mb_strtolower(nomeComanda($x) . ' ' . $x['id'])) ?>"><a class="cmd-card" href="<?= url('garcom.php?id=' . $x['id']) ?>">
@@ -57,13 +63,13 @@ require __DIR__ . '/includes/header.php';
   <?php endif; ?>
 <?php endif;
 $scripts = '';
-if (false) {
-    $scripts = '<script src="' . url('assets/vendor/html5-qrcode/html5-qrcode.min.js') . '"></script><script>(function(){var leitor=null,box=document.getElementById("cameraBox");function parar(){if(leitor){leitor.stop().catch(function(){}).then(function(){leitor.clear();leitor=null;});}box.style.display="none";}document.getElementById("btnFecharCamera").onclick=parar;document.getElementById("btnCamera").onclick=function(){if(typeof Html5Qrcode==="undefined"){mostrarAviso("Leitor da câmera não carregou. Verifique a internet.");return;}if(!window.isSecureContext){mostrarAviso("A câmera só funciona com o site em https://");return;}box.style.display="block";leitor=new Html5Qrcode("cameraLeitor",{formatsToSupport:[Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE],experimentalFeatures:{useBarCodeDetectorIfSupported:true}});leitor.start({facingMode:"environment"},{fps:12,qrbox:function(w,h){return {width:Math.floor(w*0.9),height:Math.floor(Math.min(h,w)*0.45)};}},function(txt){txt=(txt||"").trim().toUpperCase();if(!/^CMD\\d+$/.test(txt))return;leitor.stop().then(function(){location.href=BASE_URL+"/garcom.php?codigo="+encodeURIComponent(txt);});},function(){}).catch(function(){box.style.display="none";leitor=null;mostrarAviso("Não foi possível abrir a câmera. Permita o acesso à câmera no navegador.");});};})();</script>';
+if (!$c) {   // v23 desativava a câmera; reativada: só funciona em contexto seguro (HTTPS/localhost) e avisa quando não for
+    $scripts = '<script>(function(){if(!window.isSecureContext){var b=document.getElementById("btnCamera");if(b){b.disabled=true;b.innerHTML=\'<i class="bi bi-camera-video-off"></i> Câmera indisponível (precisa de HTTPS)\';}}})();</script><script src="' . url('assets/vendor/html5-qrcode/html5-qrcode.min.js') . '"></script><script>(function(){var leitor=null,box=document.getElementById("cameraBox");function parar(){if(leitor){leitor.stop().catch(function(){}).then(function(){leitor.clear();leitor=null;});}box.style.display="none";}document.getElementById("btnFecharCamera").onclick=parar;document.getElementById("btnCamera").onclick=function(){if(typeof Html5Qrcode==="undefined"){mostrarAviso("Leitor da câmera não carregou. Verifique a internet.");return;}if(!window.isSecureContext){mostrarAviso("A câmera só funciona com o site em https://");return;}box.style.display="block";leitor=new Html5Qrcode("cameraLeitor",{formatsToSupport:[Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE],experimentalFeatures:{useBarCodeDetectorIfSupported:true}});leitor.start({facingMode:"environment"},{fps:12,qrbox:function(w,h){return {width:Math.floor(w*0.9),height:Math.floor(Math.min(h,w)*0.45)};}},function(txt){txt=(txt||"").trim().toUpperCase();if(!/^CMD\\d+$/.test(txt))return;leitor.stop().then(function(){location.href=BASE_URL+"/garcom.php?codigo="+encodeURIComponent(txt);});},function(){}).catch(function(){box.style.display="none";leitor=null;mostrarAviso("Não foi possível abrir a câmera. Permita o acesso à câmera no navegador.");});};})();</script>';
 }
 if ($c) {
     $produtos = produtosLancador();
-    $scripts = '<script>window.PRODUTOS=' . json_encode($produtos, JSON_UNESCAPED_UNICODE) . ';</script><script src="' . url('assets/lancador.js?v=kg5') . '"></script>' .
-        '<script>(function(){Lancador(document.getElementById("lancador"), ' . (int) $c['id'] . ', ' . json_encode($u['nome']) . ', function(){ location.href = BASE_URL + "/garcom.php?id=' . (int) $c['id'] . '&enviado=1"; });})();</script>';
+    $scripts = '<script>window.PRODUTOS=' . json_encode($produtos, JSON_UNESCAPED_UNICODE) . ';</script><script src="' . url('assets/lancador.js?v=pwa1') . '"></script>' .
+        '<script>(function(){Lancador(document.getElementById("lancador"), ' . (int) $c['id'] . ', ' . json_encode($u['nome']) . ', function(){ location.href = BASE_URL + "/garcom.php?id=' . (int) $c['id'] . '&enviado=1"; }, {resumo: true, rotulo: ' . json_encode(nomeComanda($c)) . '});})();</script>';
 }
 $scripts .= ($c ? '<script>window.ATUALIZAR_COMANDAS={comandaId:' . (int) $c['id'] . '};</script>' : '') . '<script src="' . url('assets/atualizar.js?v=2') . '"></script>';
 require __DIR__ . '/includes/footer.php';

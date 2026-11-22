@@ -36,7 +36,7 @@ ini_set('log_errors', '1');
 if (is_dir(DATA_DIR) && is_writable(DATA_DIR)) ini_set('error_log', DATA_DIR . '/php-error.log');
 
 if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params(['path' => BASE_URL . '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => COOKIE_SECURE]);
+    session_set_cookie_params(['path' => BASE_URL . '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => COOKIE_SECURE || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https' && ($_SERVER['REMOTE_ADDR'] ?? '') === '127.0.0.1')]);   // atrás do Caddy (HTTPS na LAN)
     session_start();
 }
 
