@@ -1,9 +1,0 @@
-<?php
-// Gerado pelo instalador. Restrinja o acesso a este arquivo.
-return [
-    'DB_HOST' => '127.0.0.1',
-    'DB_PORT' => '3307',
-    'DB_USER' => 'rota403',
-    'DB_PASS' => 'ALTERAR_PARA_SENHA_FORTE',
-    'DB_NAME' => 'rota403_local',
-];

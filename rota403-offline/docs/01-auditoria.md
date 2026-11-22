@@ -3,31 +3,23 @@
 Data: 2026-11-22 · Escopo: kit `Rota403_Kit_ClaudeCode.zip` (adaptação preliminar do v.11) + `rota403.sql`.
 Tudo abaixo foi lido no código/SQL enviados; o que não pôde ser verificado está marcado **[NÃO VERIFICADO]**.
 
-## 0. Achado bloqueante — o código do kit NÃO corresponde ao banco
+## 0. Base de código definida: **v23** (resolve o bloqueio inicial)
 
-O SQL (dump da Hostinger, MariaDB 11.8.9) tem 14 tabelas. O PHP do kit usa apenas 9 delas.
+O kit/v.11 era uma versão antiga e **não** correspondia ao banco. O `rota403_v23.zip` é a versão que corresponde ao dump: usa `comanda_pagamentos`, `formas_pagamento`, `fila_impressao`, `login_tentativas`, `log_acesso`, `preparos` e a cifra `enc1`. **A base de todo o trabalho passa a ser `baseline-v23/`**; `baseline-kit/` fica só com os scripts Windows/instalador do kit (a corrigir) e o `schema-only.sql`.
 
-| Tabela | Usada no PHP do kit? |
-|---|---|
-| caixas, categorias, comandas, comanda_itens, configuracoes, pedidos, produtos, usuarios | sim |
-| **comanda_pagamentos** | **não** (caixa grava só `comandas.forma_pagamento`) |
-| **formas_pagamento** | **não** (`FORMAS` fixo em `caixa.php`) |
-| **fila_impressao** | **não** |
-| **login_tentativas** | **não** (login sem rate limit) |
-| **log_acesso** | **não** |
-| **preparos** | **não** (destinos `cozinha`/`balcao` fixos) |
+Diferenças relevantes v23 × v11 (lidas no código): pagamentos múltiplos/parciais + troco; formas de pagamento cadastráveis; produtos por kg (`quantidade`/`estoque` DECIMAL(10,3)); preparos dinâmicos (destino de impressão); venda direta; fila de impressão de contas; `seguranca.php` (AES‑256‑GCM nos nomes de usuário, Argon2id, bloqueio de login 5 tentativas/15 min por login e 20/IP, sessão com expiração e revalidação, headers de segurança, `politica_*` por registro); nomes de usuário aparecem decifrados via `decifrar()`.
 
-Além disso, `usuarios.nome` no dump está cifrado (`enc1:…`, valor com cifra reversível) e as senhas usam Argon2id; o código do kit lê `nome` em texto puro e usa `PASSWORD_DEFAULT`. Ou seja: o dump veio de uma versão **mais nova/diferente** do PHP em produção (pagamentos divididos, rate limit, auditoria de acesso, fila de impressão, cifra de campos). O PHP em `app/` é uma versão **mais simples**.
+**Pontos que afetam o sync e o instalador:**
+1. **Esquema é criado/alterado em tempo de execução** (`garantir*()` com `CREATE TABLE IF NOT EXISTS`/`ALTER` dentro de requisições). Qualquer migração nossa precisa ser compatível com isso (e não pode ser desfeita por esses `ALTER`).
+2. **Chave `enc1`** fica em `config/chave_seguranca.php`, gerada no 1º uso. Se a pasta não for gravável, cai num fallback derivado de `DB_NAME|DB_USER|DB_PASS` (fraco). **Decisão:** a chave local é independente da online; `usuarios` **não é sincronizado** (política do prompt §6.3). Nenhum hash/nome cifrado trafega.
+3. `BASE_URL='/rota403'` e `url()` remove `.php` (depende de rewrite do `.htaccess`/Apache). O servidor embutido do PHP não aplica `.htaccess`; no Windows precisaremos de um roteador (`router.php`) ou de servidor com rewrite.
+4. `iconv` é usado (`slugPreparo`): extensão `iconv` obrigatória (core no Windows PHP, confirmar). `GLOB_BRACE` em `empresa()`: **não existe em alguns PHP/libc** (ok no PHP Windows).
+5. Credenciais: `config.php` do v23 traz placeholders; o v.11 antigo trazia senha real da Hostinger e chave privada QZ — **não importados**. `v23/config/qz-private-key.pem` também existe no zip: **não importado**. Recomenda-se trocar a chave QZ (o zip circulou).
 
-**Consequência:** projetar sincronização sobre este PHP seria sincronizar regras que não são as de produção (pagamentos, impressão, usuários). Preciso do **código-fonte real que roda na Hostinger** antes da Fase 3. Também preciso saber de onde vem a chave da cifra `enc1:` (provavelmente em `config.php` real) — sem ela, nomes de usuário importados ficam ilegíveis.
-
-### 0.1 Atualização (zips `rota403_v.11.zip` e `Adaptacao.zip` recebidos)
-O `rota403_v.11.zip` tem **o mesmo PHP** do kit (diff: só `config.php`, `Database.php` e stubs QZ). Logo o v.11 é a base correta, e a divergência com o dump **continua**: o dump vem de uma instalação mais evoluída (nome do negócio no dump é outro: não é "Rota 403"). Decisão provisória: usar v.11 + esquema do dump como superconjunto; tabelas extras tratadas como "desconhecidas" até alguém confirmar quem as usa. O v.11 contém `config/qz-private-key.pem` e senha do banco Hostinger em `config.php` — **não copiados** para o repositório; recomenda-se rotacionar ambos (o zip circulou).
-
-### 0.2 Evidências executadas (MariaDB 10.11.14 + PHP 8.3.6, loopback)
-- Esquema `schema-only.sql` carrega limpo: 14 tabelas. v.11 sobe, 1º acesso cria admin, login funciona.
-- **Bug confirmado — sem idempotência:** a mesma requisição `POST /api/lancar.php` enviada 2× gravou 2 itens, total R$ 40,00 e estoque 50→46 (um pedido lógico de 2 un.).
-- **Bug confirmado — cancelar comanda já fechada:** comanda recebida (PIX) e depois `cancelar` → status permanece `fechada`, mas o estoque voltou 46→50 (devolução indevida).
+### 0.1 Evidências executadas (MariaDB 10.11.14 + PHP 8.3.6, loopback, banco criado de `schema-only.sql`)
+- 14 tabelas carregam limpas; v23 sobe; 1º acesso cria admin (nome gravado como `enc1:…`, confirmando a cifra).
+- **Bug confirmado no v23 — sem idempotência:** o mesmo `POST /api/lancar` enviado 2× gravou 2 itens (4 un.), 2 pedidos de impressão, total R$ 40,00 e estoque 50→46 para um pedido lógico de 2 un.
+- **Cancelar comanda fechada:** no v11 devolvia estoque indevidamente (reproduzido). No v23 **não reproduziu** para comanda paga, porque o `cancelar` é barrado por existir linha em `comanda_pagamentos` (proteção incidental). A ordem do código continua errada (estoque devolvido *antes* de checar `status='aberta'`); comandas legadas fechadas sem linha de pagamento ainda são afetadas. Corrigir.
 
 ## 1. Estrutura
 
@@ -50,7 +42,7 @@ Total ≈ 2.900 linhas (código pequeno, auditável por inteiro).
 - Esquema: InnoDB, utf8mb4, `NO_AUTO_VALUE_ON_ZERO`. **Sem triggers.** FKs: `comanda_itens→comandas (CASCADE)`, `comanda_itens→produtos`, `pedidos→comandas (CASCADE)`, `produtos→categorias (SET NULL)`. Sem FK de `caixas`, `comandas.caixa_id`, `comanda_pagamentos.comanda_id`. UNIQUEs: `usuarios.login`, `produtos.codigo_barras`, `formas_pagamento.nome`. Colunas `timestamp` (UTC no servidor) misturadas com `datetime` (hora local) → **risco de fuso** (ver §9).
 - PKs são `INT AUTO_INCREMENT` em todas as tabelas, sem UUID. **Colidirão** entre local e online.
 
-## 3. Autenticação, sessão, CSRF
+## 3. Autenticação, sessão, CSRF  (⚠ seções 1–11 foram escritas sobre o v.11; onde diferem, vale a §0 acima. Revisão completa pelo v23 na Fase 1)
 
 - Login: `SELECT … WHERE login=? AND ativo=1` + `password_verify`; `session_regenerate_id`. Sem rate limit, sem log (tabelas existem no banco, código não usa).
 - Primeiro acesso: se `usuarios` vazia, `login.php` cria administrador (aceita senha de 6 caracteres). Bom para o instalador; **mas qualquer pessoa na LAN que abrir a página antes do dono vira admin** → o instalador deve criar o admin e o endpoint de primeiro acesso deve ser desabilitado depois.

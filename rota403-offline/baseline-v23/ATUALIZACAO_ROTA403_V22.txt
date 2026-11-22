@@ -1,0 +1,5 @@
+ROTA 403 v22 - melhorias do Trem Bão v39 + nova logo
+Troque na Hostinger (/rota403):
+ caixa.php, assets/style.css, includes/header.php, includes/helpers.php,
+ login.php, imprimir/comanda.php e envie uploads/logo.jpg
+Depois Ctrl+F5. Nada no banco.
