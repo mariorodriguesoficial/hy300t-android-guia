@@ -114,12 +114,17 @@ function Lancador(el, comandaId, garcom, onEnviado) {
   $('enviar').addEventListener('click', function () {
     var btn = this; btn.disabled = true;
     var linhas = Object.keys(carrinho).map(function (k) { return { produto_id: carrinho[k].p.id, quantidade: carrinho[k].q, observacao: carrinho[k].obs }; });
+    // Chave idempotente: mesma chave em reenvio do MESMO carrinho (retry/timeout); carrinho diferente = chave nova
+    var assinatura = JSON.stringify([comandaId, linhas]);
+    if (!window.__envio || window.__envio.assinatura !== assinatura) {
+      window.__envio = { assinatura: assinatura, chave: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('k' + Date.now() + Math.random().toString(16).slice(2)) };
+    }
     fetch(BASE_URL + '/api/lancar.php', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF },
-      body: JSON.stringify({ comanda_id: comandaId, garcom: garcom, itens: linhas })
+      body: JSON.stringify({ comanda_id: comandaId, garcom: garcom, itens: linhas, chave: window.__envio.chave })
     }).then(function (r) { return r.json(); }).then(function (r) {
       if (r.erro) { mostrarAviso(r.erro); btn.disabled = false; return; }
-      carrinho = {}; render();
+      carrinho = {}; window.__envio = null; render();
       if (onEnviado) onEnviado();
       else mostrarAviso('Itens adicionados à comanda!');
     }).catch(function () { mostrarAviso('Falha de conexão. Tente novamente.'); btn.disabled = false; });

@@ -38,5 +38,6 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once BASE_PATH . '/includes/Database.php';
+require_once BASE_PATH . '/includes/Migrator.php';
 require_once BASE_PATH . '/includes/helpers.php';
 require_once BASE_PATH . '/includes/Auth.php';

@@ -89,7 +89,7 @@ function recalcularTotal(int $comandaId): void
  * Lança itens na comanda, baixa estoque e gera pedidos para cozinha/balcão.
  * $linhas = [['produto_id'=>int,'quantidade'=>int,'observacao'=>string], ...]
  */
-function lancarItens(int $comandaId, array $linhas, string $garcom = '', bool $gerarPedidos = true): void
+function lancarItens(int $comandaId, array $linhas, string $garcom = '', bool $gerarPedidos = true, ?string $chave = null): void
 {
     $pdo = Database::pdo();
     // Criação/ajuste de tabelas ANTES da transação: no MySQL, CREATE/ALTER encerra a transação
@@ -100,10 +100,18 @@ function lancarItens(int $comandaId, array $linhas, string $garcom = '', bool $g
     $kgSemImpressao = (Auth::user()['nivel'] ?? 'garcom') !== 'garcom';
     // Pedidos lançados por caixa/supervisor/admin ficam registrados como já impressos (não saem na impressora); só o garçom imprime
     $pedidoImpresso = $kgSemImpressao ? 1 : 0;
+    // DDL fora da transação (no MySQL o CREATE encerra a transação)
+    if ($chave !== null) Database::query('CREATE TABLE IF NOT EXISTS idempotencia (chave VARCHAR(64) NOT NULL PRIMARY KEY, comanda_id INT NOT NULL, criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
     $pdo->beginTransaction();
     try {
         $c = Database::one("SELECT * FROM comandas WHERE id = ? AND status = 'aberta' FOR UPDATE", [$comandaId]);
         if (!$c) throw new RuntimeException('Comanda não encontrada ou fechada.');
+        // Idempotência: a mesma chave não lança duas vezes (toque duplo, retry após timeout, replay).
+        // A chave é gravada na MESMA transação: se o lançamento falhar, ela também é desfeita.
+        if ($chave !== null) {
+            $ins = Database::query('INSERT IGNORE INTO idempotencia (chave, comanda_id) VALUES (?, ?)', [$chave, $comandaId]);
+            if ($ins->rowCount() === 0) { $pdo->rollBack(); return; } // já processada: sucesso sem repetir
+        }
         $porDestino = [];
         foreach ($linhas as $l) {
             $p = Database::one('SELECT * FROM produtos WHERE id = ? AND ativo = 1', [(int) $l['produto_id']]);

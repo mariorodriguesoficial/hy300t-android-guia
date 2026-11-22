@@ -195,9 +195,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($acao === 'cancelar') {
         $id = (int) $_POST['comanda_id'];
         if (valorPagoParcial($id) > 0) { flash('Esta comanda tem pagamento parcial e não pode ser cancelada.', 'danger'); redirect('caixa.php?id=' . $id); }
-        foreach (Database::all('SELECT ci.*, p.controlar_estoque FROM comanda_itens ci JOIN produtos p ON p.id=ci.produto_id WHERE comanda_id=?', [$id]) as $i)
-            if ($i['controlar_estoque']) Database::query('UPDATE produtos SET estoque = estoque + ? WHERE id = ?', [$i['quantidade'], $i['produto_id']]);
-        Database::query("UPDATE comandas SET status='cancelada', fechado_em=NOW() WHERE id=? AND status='aberta'", [$id]);
+        $pdoC = Database::pdo(); $pdoC->beginTransaction();
+        try {
+            // Primeiro muda o status (atômico); só devolve estoque se ESTA chamada cancelou uma comanda aberta
+            $stC = Database::query("UPDATE comandas SET status='cancelada', fechado_em=NOW() WHERE id=? AND status='aberta'", [$id]);
+            if ($stC->rowCount() === 1) {
+                foreach (Database::all('SELECT ci.*, p.controlar_estoque FROM comanda_itens ci JOIN produtos p ON p.id=ci.produto_id WHERE comanda_id=?', [$id]) as $i)
+                    if ($i['controlar_estoque']) Database::query('UPDATE produtos SET estoque = estoque + ? WHERE id = ?', [$i['quantidade'], $i['produto_id']]);
+            }
+            $pdoC->commit();
+        } catch (Throwable $t) { if ($pdoC->inTransaction()) $pdoC->rollBack(); throw $t; }
+        if ($stC->rowCount() !== 1) { flash('Comanda já estava fechada ou cancelada; nada foi alterado.', 'danger'); redirect('caixa.php'); }
         flash("Comanda nº $id cancelada.", 'warning'); redirect('caixa.php');
     }
     if ($acao === 'fechar') {
