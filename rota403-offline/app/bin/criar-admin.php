@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Somente linha de comando.'); }
 /**
  * Cria o PRIMEIRO administrador (usado pelo instalador). Recusa se já existir usuário.
  * Lê JSON {"nome","login","senha"} de um arquivo (--arquivo=) — a senha nunca vai na linha de comando.

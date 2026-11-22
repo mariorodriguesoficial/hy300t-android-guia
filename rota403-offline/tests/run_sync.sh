@@ -19,7 +19,30 @@ cat > "$T/$1/config/config.local.php" <<PHP
 <?php return ['DB_HOST'=>'127.0.0.1','DB_PORT'=>'3398','DB_USER'=>'rota403','DB_PASS'=>'$PW','DB_NAME'=>'rota403_$1','BASE_URL'=>'','SYNC_REQUIRE_HTTPS'=>false $2];
 PHP
 }
-cfg online ""; cfg local ""
+if [ "${ONLINE_V23:-}" = "1" ]; then
+  # Servidor ONLINE realista: o v23 ORIGINAL (como está na Hostinger) + somente o pacote deploy-online + 3 linhas no config.php
+  "$ROOT/tools/montar-pacote-online.sh" >/dev/null
+  rm -rf "$T/online"; mkdir -p "$T/online"; cp -r "$ROOT/baseline-v23/." "$T/online/"; cp -r "$ROOT/deploy-online/arquivos/." "$T/online/"
+  rm -f "$T/online/sync-setup-web.php"; cp "$ROOT/app/router.php" "$T/online/router.php"; mkdir -p "$T/online/storage" "$T/online/config"
+  cat > "$T/online/config/config.php" <<PHP
+<?php
+// config.php no estilo do v23 (credenciais por define) + as 3 linhas do deploy
+define('DB_HOST', '127.0.0.1;port=3398'); define('DB_USER', 'rota403'); define('DB_PASS', '$PW'); define('DB_NAME', 'rota403_online');
+define('EMPRESA_NOME', 'ROTA 403'); define('EMPRESA_SUB', 'teste'); define('BASE_URL', ''); define('BASE_PATH', dirname(__DIR__));
+define('SYNC_REQUIRE_HTTPS', false);
+date_default_timezone_set('America/Sao_Paulo'); ini_set('display_errors', '0');
+if (session_status() === PHP_SESSION_NONE) { session_set_cookie_params(['path' => BASE_URL . '/', 'httponly' => true, 'samesite' => 'Lax']); session_start(); }
+require_once BASE_PATH . '/includes/Database.php';
+require_once BASE_PATH . '/includes/helpers.php';
+require_once BASE_PATH . '/includes/Auth.php';
+require_once BASE_PATH . '/includes/Migrator.php';
+require_once BASE_PATH . '/includes/Sync.php';
+require_once BASE_PATH . '/includes/SyncServer.php';
+PHP
+  cfg local ""
+else
+  cfg online ""; cfg local ""
+fi
 (cd "$T/online" && php bin/migrate.php >/dev/null)
 (cd "$T/local" && php bin/migrate.php >/dev/null)
 php -S 127.0.0.1:8101 -t "$T/online" "$T/online/router.php" >"$T/on.log" 2>&1 & echo $! > "$T/on.pid"

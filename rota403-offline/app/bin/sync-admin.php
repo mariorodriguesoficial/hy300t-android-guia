@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Somente linha de comando.'); }
 // Uso: php bin/sync-admin.php semear | device-add "Nome" | device-revoke <id> | device-list | conflitos | id-inicial <N>
 require_once __DIR__ . '/../config/config.php';
 require_once BASE_PATH . '/includes/SyncServer.php';

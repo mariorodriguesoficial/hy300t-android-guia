@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Somente linha de comando.'); }
 /**
  * Gera o Caddyfile do servidor web do Rota 403 (Windows e Linux).
  *   - HTTP em 127.0.0.1:<porta-http>  (uso no próprio PC)

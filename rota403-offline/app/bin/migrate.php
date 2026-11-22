@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Somente linha de comando.'); }
 // Uso: php bin/migrate.php [--status]
 require_once __DIR__ . '/../config/config.php';
 $pdo = Database::pdo();

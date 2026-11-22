@@ -81,6 +81,8 @@ def nova_comanda(c, db, nome):
     return int(val(db, f"select id from comandas where identificacao='{nome}'"))
 
 def setUpModule():
+    if os.environ.get('ONLINE_V23'):   # garante que o "online" é mesmo o v23 original (sem as correções do app local)
+        assert 'idempotencia' not in open(f'{DIR["online"]}/includes/helpers.php').read(), 'online não é o v23 puro'
     C['on'] = Cli(ON).login('online'); C['lo'] = Cli(LO).login('local')
     out = php('online', 'bin/sync-admin.php', 'device-add', 'Notebook Caixa').stdout
     DEV['id'] = re.search(r'device_id: (\S+)', out).group(1); DEV['secret'] = re.search(r'UMA vez[^:]*: (\S+)', out).group(1)
@@ -263,7 +265,16 @@ class T09_Seguranca(Base):
     def test_http_exigido_por_padrao(self):
         # (o servidor de teste roda com SYNC_REQUIRE_HTTPS=false; o padrão no código é true)
         self.assertIn("? SYNC_REQUIRE_HTTPS : true", open(f'{DIR["online"]}/includes/SyncServer.php').read())
-        self.assertIn("'SYNC_REQUIRE_HTTPS' => true", open(f'{DIR["online"]}/config/config.php').read())
+        if not os.environ.get('ONLINE_V23'): self.assertIn("'SYNC_REQUIRE_HTTPS' => true", open(f'{DIR["online"]}/config/config.php').read())
+
+class T09b_ScriptsNaoViaWeb(Base):
+    def test_bin_e_setup_nao_executam_pela_web(self):
+        for p in ('/bin/migrate.php', '/bin/sync-admin.php'):
+            r = urllib.request.Request(ON + p)
+            try: s = urllib.request.urlopen(r).status
+            except urllib.error.HTTPError as e: s = e.code
+            self.assertEqual(s, 403, p)
+        self.assertEqual(val('online', "select count(*) from schema_migrations"), val('online', "select count(*) from schema_migrations"))
 
 class T10_Restauracao(Base):
     def test_voltar_cursor_nao_duplica(self):

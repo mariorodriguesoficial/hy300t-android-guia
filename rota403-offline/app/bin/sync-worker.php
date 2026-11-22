@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Somente linha de comando.'); }
 // Uso: php bin/sync-worker.php [--once] [--lote=N]
 // Loop: envia/baixa; sem internet apenas espera (backoff exponencial com jitter). Nunca bloqueia o PDV.
 require_once __DIR__ . '/../config/config.php';
