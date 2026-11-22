@@ -17,6 +17,6 @@ cat > "$T/app/config/config.local.php" <<PHP
 <?php return ['DB_HOST'=>'127.0.0.1','DB_PORT'=>'3399','DB_USER'=>'rota403','DB_PASS'=>'$PW','DB_NAME'=>'rota403_test','BASE_URL'=>''];
 PHP
 (cd "$T/app" && php bin/migrate.php >/dev/null)
-php -S 127.0.0.1:8099 -t "$T/app" "$T/app/router.php" >"$T/php.log" 2>&1 & echo $! > "$T/php.pid"
+php -d output_buffering=0 -d opcache.enable=0 -S 127.0.0.1:8099 -t "$T/app" "$T/app/router.php" >"$T/php.log" 2>&1 & echo $! > "$T/php.pid"
 sleep 1
 BASE=http://127.0.0.1:8099 SOCK="$T/s.sock" DBNAME=rota403_test APPDIR="$T/app" python3 -I "$ROOT/tests/test_sync_base.py" -v

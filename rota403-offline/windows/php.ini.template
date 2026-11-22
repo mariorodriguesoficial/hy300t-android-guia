@@ -29,6 +29,8 @@ sys_temp_dir="@DATADIR@\tmp"
 allow_url_fopen=Off
 allow_url_include=Off
 ; Extensões habilitadas (somente as usadas): banco, texto, TLS/HMAC/cifra, imagem da logo, sync HTTP, iconv
+; Sem buffer de saída (padrão do PHP embutido): stray output vira erro visível em vez de mascarado
+output_buffering=0
 extension=pdo_mysql
 extension=mbstring
 extension=openssl
