@@ -25,7 +25,10 @@ define('BASE_URL', $__cfg['BASE_URL'] ?? '');   // sem barra final
 define('BASE_PATH', dirname(__DIR__));
 define('DATA_DIR', $__cfg['DATA_DIR'] ?? BASE_PATH . '/storage'); // logs/backups fora da pasta do app no Windows
 define('COOKIE_SECURE', (bool) ($__cfg['COOKIE_SECURE'] ?? false));
-unset($__local, $__cfg, $__k);
+// Sincronização (opcional). Segredo NUNCA no Git.
+foreach (['SYNC_ENABLED' => false, 'SYNC_API_URL' => '', 'SYNC_DEVICE_ID' => '', 'SYNC_SECRET' => '', 'SYNC_REQUIRE_HTTPS' => true, 'SYNC_CA_BUNDLE' => '', 'SYNC_CLOCK_SKEW' => 0] as $__k => $__d)
+    if (!defined($__k)) define($__k, $__cfg[$__k] ?? $__d);
+unset($__local, $__cfg, $__k, $__d);
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', '0');
@@ -39,5 +42,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once BASE_PATH . '/includes/Database.php';
 require_once BASE_PATH . '/includes/Migrator.php';
+require_once BASE_PATH . '/includes/Sync.php';
+require_once BASE_PATH . '/includes/SyncServer.php';
 require_once BASE_PATH . '/includes/helpers.php';
 require_once BASE_PATH . '/includes/Auth.php';

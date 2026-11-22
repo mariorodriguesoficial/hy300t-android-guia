@@ -8,7 +8,7 @@ Estrutura: `baseline-v23/` (original, intocado) · `app/` (versão de trabalho) 
 | 2 Offline (assets) | PASS em navegador headless Linux: 0 requisições externas, fontes/ícones locais (`tests/offline_check.js`) | exige rodar: `BASE=... RUSER=... RPASS=... node tests/offline_check.js` |
 | 3a Base de sync (migração 001) | PASS 10/10 testes (`tests/run_all.sh`), mutação confirma que os testes detectam regressão | uuid/rev/updated_at_utc/tombstones/livro-razão de estoque/idempotência |
 | Correções | idempotência no lançamento (`chave`), cancelamento atômico | testes |
-| 3b API sync, worker, conflitos | NÃO INICIADO | — |
+| 3b API sync, worker, conflitos | PASS local (20 testes, `tests/run_sync.sh`; 4 mutações detectadas). **Não** testado contra Hostinger/HTTPS real; worker ainda não é serviço Windows | docs/04 |
 | 4 PWA | NÃO INICIADO | — |
 | 5 Impressão | NÃO INICIADO. QZ no v23 está travado ao domínio `mrinformatica.inf.br` (`impressao.php`, `includes/qz_security.php`): local cai no diálogo do navegador | — |
 | 1/6/7/8/9 Instalador, serviços, backup, painel, segurança | NÃO INICIADO — `BLOCKED` para validação (sem Windows aqui) | — |

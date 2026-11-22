@@ -9,6 +9,7 @@ $menu = [
     ['categorias.php', 'Categorias', 'bi-tags', ['__admin__']],
     ['relatorios.php', 'Relatórios', 'bi-graph-up', ['__admin__']],
     ['usuarios.php', 'Usuários', 'bi-people', ['__admin__']],
+    ['sync_conflitos.php', 'Sincronização', 'bi-arrow-repeat', ['__admin__']],
     ['configuracoes.php', 'Configurações', 'bi-gear', ['__admin__']],
     ['impressao.php', 'Monitor Impressão', 'bi-printer', ['caixa']],
 ];

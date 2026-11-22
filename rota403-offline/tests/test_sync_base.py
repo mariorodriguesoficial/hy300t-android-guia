@@ -50,19 +50,19 @@ class TestMigracao(unittest.TestCase):
     def test_idempotente_e_uuid_unico(self):
         out = subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True, text=True).stdout
         self.assertNotIn('Aplicada', out)           # segunda execução não reaplica
-        self.assertEqual(val('select max(versao) from schema_migrations'), '1')
+        self.assertEqual(val('select max(versao) from schema_migrations'), '2')
         for t in ['caixas','categorias','comandas','comanda_itens','comanda_pagamentos','pedidos','produtos','formas_pagamento']:
             self.assertEqual(val(f'select count(*)-count(distinct uuid) from {t}'), '0', t)
             self.assertEqual(val(f'select count(*) from {t} where uuid is null'), '0', t)
     def test_tamper_checksum(self):
-        sql("update schema_migrations set checksum='x' where versao=1")
+        sql("update schema_migrations set checksum='x' where versao=2")
         out = subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True, text=True)
         sql("update schema_migrations set checksum=(select checksum from (select 1) z) where 0")  # no-op
         self.assertIn('alterada', out.stdout + out.stderr)
         # restaura: recalcula via PHP
-        sql("delete from schema_migrations where versao=1")
+        sql("delete from schema_migrations where versao=2")
         subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True)
-        self.assertEqual(val('select max(versao) from schema_migrations'), '1')
+        self.assertEqual(val('select max(versao) from schema_migrations'), '2')
 
 class TestTriggers(unittest.TestCase):
     def test_rev_estoque_ledger_tombstone(self):
