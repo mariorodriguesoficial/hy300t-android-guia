@@ -21,6 +21,14 @@ Além disso, `usuarios.nome` no dump está cifrado (`enc1:…`, valor com cifra 
 
 **Consequência:** projetar sincronização sobre este PHP seria sincronizar regras que não são as de produção (pagamentos, impressão, usuários). Preciso do **código-fonte real que roda na Hostinger** antes da Fase 3. Também preciso saber de onde vem a chave da cifra `enc1:` (provavelmente em `config.php` real) — sem ela, nomes de usuário importados ficam ilegíveis.
 
+### 0.1 Atualização (zips `rota403_v.11.zip` e `Adaptacao.zip` recebidos)
+O `rota403_v.11.zip` tem **o mesmo PHP** do kit (diff: só `config.php`, `Database.php` e stubs QZ). Logo o v.11 é a base correta, e a divergência com o dump **continua**: o dump vem de uma instalação mais evoluída (nome do negócio no dump é outro: não é "Rota 403"). Decisão provisória: usar v.11 + esquema do dump como superconjunto; tabelas extras tratadas como "desconhecidas" até alguém confirmar quem as usa. O v.11 contém `config/qz-private-key.pem` e senha do banco Hostinger em `config.php` — **não copiados** para o repositório; recomenda-se rotacionar ambos (o zip circulou).
+
+### 0.2 Evidências executadas (MariaDB 10.11.14 + PHP 8.3.6, loopback)
+- Esquema `schema-only.sql` carrega limpo: 14 tabelas. v.11 sobe, 1º acesso cria admin, login funciona.
+- **Bug confirmado — sem idempotência:** a mesma requisição `POST /api/lancar.php` enviada 2× gravou 2 itens, total R$ 40,00 e estoque 50→46 (um pedido lógico de 2 un.).
+- **Bug confirmado — cancelar comanda já fechada:** comanda recebida (PIX) e depois `cancelar` → status permanece `fechada`, mas o estoque voltou 46→50 (devolução indevida).
+
 ## 1. Estrutura
 
 ```
