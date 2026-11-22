@@ -43,7 +43,8 @@ Name: "{app}\servicos"
 [Files]
 ; Código e runtimes. NUNCA entram aqui: config.local.php, chave_seguranca.php, banco, backups (ficam fora/são gerados).
 Source: "{#Origem}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "config.local.php,chave_seguranca.php"
-Source: "{#Origem}\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "{#Origem}\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "vc_redist.x64.exe"
+Source: "{#Origem}\runtime\vcredist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "{#Origem}\windows\*"; DestDir: "{app}\windows"; Flags: recursesubdirs ignoreversion
 Source: "{#Origem}\database\*"; DestDir: "{app}\database"; Flags: ignoreversion
 Source: "{#Origem}\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
@@ -188,7 +189,8 @@ begin
   // VC++ Redistributable (PHP e MariaDB precisam)
   if not RegValueExists(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed') then begin
     WizardForm.StatusLabel.Caption := 'Instalando Microsoft Visual C++ Runtime...';
-    if not Exec(ExpandConstant('{tmp}\vc_redist.x64.exe'), '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, Codigo) then begin end;
+    ExtractTemporaryFile('vc_redist.x64.exe');
+    Exec(ExpandConstant('{tmp}\vc_redist.x64.exe'), '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, Codigo);
   end;
   // Atualização: backup verificado ANTES de trocar qualquer arquivo; se falhar, aborta sem alterar nada
   if Atualizando and FileExists(ExpandConstant('{app}\windows\atualizar.ps1')) then begin
@@ -206,7 +208,7 @@ begin
     else begin Http := StrToIntDef(PgOpcoes.Values[0], 8080); Db := StrToIntDef(PgOpcoes.Values[1], 3307); end;
     Args := '-File "' + ExpandConstant('{app}\windows\instalar.ps1') + '" -Raiz "' + ExpandConstant('{app}') + '" -Dados "' + DadosDir + '" -PortaHttp ' + IntToStr(Http) + ' -PortaDb ' + IntToStr(Db);
     if (not Atualizando) then begin
-      ArqAdmin := ExpandConstant('{tmp}\rota403-admin-') + IntToStr(GetTickCount) + '.json';
+      ArqAdmin := ExpandConstant('{tmp}\rota403-admin-') + GetDateTimeString('yyyymmddhhnnss', #0, #0) + '.json';
       Json := '{"nome":"' + JsonEscapar(Trim(PgAdmin.Values[0])) + '","login":"' + JsonEscapar(Trim(PgAdmin.Values[1])) + '","senha":"' + JsonEscapar(PgAdmin.Values[2]) + '"}';
       SaveStringToFile(ArqAdmin, Json, False);
       Exec(ExpandConstant('{sys}\icacls.exe'), '"' + ArqAdmin + '" /inheritance:r /grant:r *S-1-5-32-544:F *S-1-5-18:F', '', SW_HIDE, ewWaitUntilTerminated, Codigo);
