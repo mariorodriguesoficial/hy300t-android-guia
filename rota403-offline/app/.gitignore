@@ -1,0 +1,4 @@
+config/config.local.php
+config/chave_seguranca.php
+storage/*
+!storage/.gitignore

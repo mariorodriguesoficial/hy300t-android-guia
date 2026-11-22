@@ -1,0 +1,299 @@
+:root {
+  --brasa: #d9530f; --brasa-esc: #b8380f; --carvao: #1f1813; --carvao-2: #2c231d;
+  --creme: #f8f4ec; --campo: #4d6b3a; --borda: #e2d8c8; --texto: #2b2119; --mudo: #7d6d5d;
+  --bs-primary: #d9530f; --bs-primary-rgb: 217, 83, 15; --bs-body-font-family: 'Barlow', system-ui, sans-serif;
+  --bs-body-bg: #f8f4ec; --bs-body-color: #2b2119; --bs-border-color: #e2d8c8;
+}
+h1, h2, h3, .display { font-family: 'Bebas Neue', sans-serif; letter-spacing: .03em; font-weight: 400; }
+h1 { font-size: 3rem; } h2 { font-size: 1.9rem; }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--carvao); color: #eadfcf; display: flex; flex-direction: column; padding: 20px 12px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; padding: 0 8px; }
+.brand-logo { flex: 0 0 44px; width: 44px; height: 44px; object-fit: contain; border-radius: 50%; background: var(--bs-body-bg); }
+.brand .ember-dot { flex-shrink: 0; }
+.brand-name { flex: 1; min-width: 0; font-family: 'Bebas Neue'; font-size: 1.65rem; line-height: 1.1; overflow-wrap: anywhere; }
+.ember-dot { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #e8661a, #b8380f); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; }
+.sidebar nav a, .user-box a { display: flex; gap: 10px; align-items: center; color: #eadfcf; text-decoration: none; padding: 9px 12px; border-radius: 8px; font-weight: 500; margin-bottom: 2px; }
+.sidebar nav a:hover, .user-box a:hover { background: var(--carvao-2); }
+.sidebar nav a.active { background: var(--brasa); color: #fff; }
+.user-box { margin-top: auto; border-top: 1px solid #3a2f27; padding-top: 10px; }
+.user-box small { display: block; padding: 0 12px 6px; color: #a8998a; }
+.content { flex: 1; padding: 28px; min-width: 0; }
+.btn-primary { --bs-btn-bg: var(--brasa); --bs-btn-border-color: var(--brasa); --bs-btn-hover-bg: var(--brasa-esc); --bs-btn-hover-border-color: var(--brasa-esc); --bs-btn-active-bg: var(--brasa-esc); --bs-btn-disabled-bg: var(--brasa); --bs-btn-disabled-border-color: var(--brasa); }
+.btn-outline-primary { --bs-btn-color: var(--brasa); --bs-btn-border-color: var(--brasa); --bs-btn-hover-bg: var(--brasa); --bs-btn-hover-border-color: var(--brasa); --bs-btn-active-bg: var(--brasa); }
+.btn-success { --bs-btn-bg: var(--campo); --bs-btn-border-color: var(--campo); }
+.btn-ember { background: linear-gradient(135deg, #e8661a, #b8380f); color: #fff; border: 0; box-shadow: 0 10px 25px -12px rgba(217, 83, 15, .7); }
+.btn-ember:hover { color: #fff; filter: brightness(1.05); }
+.card-r { background: #fffdf8; border: 1px solid var(--borda); border-radius: 10px; padding: 18px; }
+.cmd-card { display: block; background: #fffdf8; border-left: 5px solid var(--brasa); border-radius: 10px; padding: 14px; text-decoration: none; color: var(--texto); box-shadow: 0 2px 6px rgba(0,0,0,.04); transition: .15s; cursor: pointer; width: 100%; text-align: left; border-top: 0; border-right: 0; border-bottom: 0; }
+.cmd-card:hover, .cmd-card.sel { box-shadow: 0 10px 25px -12px rgba(217, 83, 15, .6); background: #fff3e6; }
+.cmd-card .nome { font-family: 'Bebas Neue'; font-size: 1.6rem; line-height: 1.1; }
+.cmd-card .valor { color: var(--brasa); font-weight: 700; }
+.muted { color: var(--mudo); }
+.grid-cmd { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.grid-prod { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.prod-btn { position: relative; background: #fffdf8; border: 1px solid var(--borda); border-radius: 10px; padding: 12px; text-align: left; transition: .1s; }
+.prod-btn:active { transform: scale(.96); }
+.prod-btn.on { border-color: var(--brasa); background: #fff0e0; }
+.prod-btn .n { font-weight: 600; font-size: .92rem; line-height: 1.15; padding-right: 22px; }
+.prod-btn .p { color: var(--brasa); font-size: .9rem; margin-top: 4px; }
+.prod-btn .q { position: absolute; top: 8px; right: 8px; background: var(--brasa); color: #fff; border-radius: 99px; min-width: 24px; height: 24px; font-size: .8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.cart { position: sticky; top: 20px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.chips .btn { white-space: nowrap; }
+.table thead th { background: #efe7da; font-weight: 600; }
+.kpi { background: #fffdf8; border: 1px solid var(--borda); border-radius: 10px; padding: 12px; }
+.kpi .v { font-size: 1.25rem; font-weight: 700; }
+.kpi.total { background: linear-gradient(135deg, #e8661a, #b8380f); color: #fff; border: 0; }
+.badge-preparo { background: #6c757d; }
+.badge-cozinha { background: var(--brasa); } .badge-balcao { background: var(--campo); }
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--carvao); padding: 16px; }
+.login-box { background: #fffdf8; border-radius: 14px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 20px 50px -20px rgba(217, 83, 15, .6); }
+.login-logo { display: block; width: 100%; max-width: 180px; height: 100px; object-fit: contain; margin: 0 auto; }
+.login-creditos { margin-top: 18px; text-align: center; color: var(--mudo); font-size: .8rem; line-height: 1.5; overflow-wrap: anywhere; }
+.barra-comanda { background: var(--brasa); color: #fff; border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+.aviso-fundo { position: fixed; z-index: 1090; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(31, 24, 19, .42); }
+.aviso-central { position: fixed; z-index: 1091; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100vw - 32px)); display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-radius: 10px; background: var(--brasa); color: #fff; box-shadow: 0 18px 48px rgba(31, 24, 19, .35); font-weight: 600; font-size: 1.2rem; line-height: 1.35; text-align: center; }
+.aviso-central span { flex: 1; }
+.aviso-fechar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; margin: -8px -8px -8px 0; border: 2px solid rgba(255,255,255,.85); border-radius: 50%; background: rgba(255,255,255,.18); color: #fff; font-size: 2.2rem; font-weight: 700; line-height: 1; padding: 0 0 4px; cursor: pointer; touch-action: manipulation; }
+.aviso-fechar:hover, .aviso-fechar:active { background: rgba(255,255,255,.35); }
+.aviso-confirmacao { position: static; transform: none; flex-direction: column; }
+.aviso-acoes { display: flex; justify-content: center; gap: 10px; width: 100%; }
+.aviso-botao { min-width: 110px; border: 1px solid #fff; border-radius: 7px; padding: 8px 14px; font-weight: 700; }
+.aviso-cancelar { background: transparent; color: #fff; }
+.aviso-confirmar { background: #fff; color: var(--brasa); }
+.aviso-botao { font-size: 1.05rem; }
+.aviso-campo { width: 100%; box-sizing: border-box; border: 2px solid #fff; border-radius: 8px; padding: 10px 12px; background: #fff; color: #000; font-size: 1.4rem; font-weight: 700; text-align: center; outline: none; }
+.aviso-campo::placeholder { color: #888; font-weight: 400; }
+.abas-comanda { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
+.aba-comanda { border: 1px solid var(--brasa); border-radius: 8px; background: #fffdf8; color: var(--brasa); padding: 11px 8px; font-weight: 700; }
+.aba-comanda.active { background: var(--brasa); color: #fff; }
+.aba-contador { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; margin-left: 4px; padding: 0 6px; border-radius: 99px; background: rgba(255,255,255,.22); }
+.painel-aba { display: none; }
+.painel-aba.active { display: block; }
+.lista-itens-comanda { max-height: 52vh; overflow-y: auto; }
+.item-comanda-mobile { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: start; padding: 13px; border-bottom: 1px solid var(--borda); }
+.item-quantidade { display: grid; place-items: center; min-height: 34px; border-radius: 7px; background: var(--brasa); color: #fff; font-weight: 700; }
+.item-detalhes { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.item-detalhes strong, .item-detalhes span, .item-detalhes small { display: block; min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
+.item-detalhes span, .item-detalhes small { color: var(--mudo); }
+.item-valor { color: var(--brasa); font-weight: 700; white-space: nowrap; }
+.total-comanda-mobile { display: flex; justify-content: space-between; align-items: center; padding: 14px; font-size: 1.15rem; }
+.total-comanda-mobile strong { color: var(--brasa); font-size: 1.35rem; }
+.monitor-popup .sidebar { display: none; }
+.monitor-popup .content { width: 100%; }
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; padding: 8px; overflow-x: auto; align-items: center; }
+  .brand { margin: 0 6px 0 0; } .brand-name, .sidebar nav a span, .user-box small, .user-box a span { display: none; }
+  .sidebar nav { display: flex; } .user-box { margin: 0 0 0 auto; border: 0; padding: 0; }
+  .content { padding: 14px; } h1 { font-size: 2.3rem; }
+  .item-comanda-mobile { grid-template-columns: 38px minmax(0, 1fr); gap: 9px; padding: 12px; }
+  .item-quantidade { grid-row: 1 / span 2; }
+  .item-detalhes { grid-column: 2; }
+  .item-detalhes strong { font-size: 1rem; }
+  .item-detalhes small { font-size: .82rem; }
+  .item-valor { grid-column: 2; justify-self: start; white-space: normal; }
+  .total-comanda-mobile { gap: 12px; }
+  .total-comanda-mobile strong { margin-left: auto; white-space: nowrap; }
+  .aviso-central { width: calc(100vw - 32px); max-width: 440px; padding: 18px; color: #fff; }
+  .aviso-central span { color: #fff; overflow-wrap: anywhere; }
+  .aviso-fechar { color: #fff; }
+}
+
+/* Miniaturas dos produtos, sem alterar a disposição das demais telas. */
+.produto-miniatura { flex: none; width: 56px; height: 56px; object-fit: contain; background: #fff; border-radius: 6px; }
+.form-secao { font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--mudo); border-bottom: 1px solid var(--borda); padding-bottom: 6px; }
+.form-produto .form-label { margin-bottom: .25rem; font-weight: 600; }
+.form-produto .form-text { margin-top: .25rem; font-size: .78rem; }
+.form-botoes { border-top: 1px solid var(--borda); }
+.produto-cadastro { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.prod-btn { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.prod-btn .produto-miniatura { width: 48px; height: 48px; }
+.produto-info { flex: 1; min-width: 0; }
+.prod-btn .n { overflow-wrap: anywhere; padding-right: 0; }
+.prod-btn .q { top: 2px; right: 2px; }
+@media (max-width: 768px) {
+  .grid-prod { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .prod-btn { flex-direction: column; align-items: center; text-align: center; padding: 6px 4px; gap: 3px; }
+  .prod-btn .produto-miniatura { width: 32px; height: 32px; }
+  .prod-btn .produto-info { width: 100%; }
+  .prod-btn .n { font-size: .7rem; line-height: 1.15; }
+  .prod-btn .p, .prod-btn .small { font-size: .68rem; margin-top: 2px; }
+  .prod-btn .q { min-width: 20px; height: 20px; font-size: .7rem; }
+}
+
+/* Consulta de estoque por categoria. */
+.abas-estoque { display: flex; flex-wrap: wrap; gap: 8px; }
+.abas-estoque .btn { white-space: nowrap; }
+@media (max-width: 768px) {
+  .abas-estoque { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
+  .abas-estoque .btn { flex: none; }
+}
+
+/* v8: lista de comandas alinhada */
+.grid-cmd { align-items: stretch; }
+.cmd-item { display: flex; flex-direction: column; gap: 4px; }
+.cmd-item .cmd-card { flex: 1; }
+.cmd-item .cmd-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; }
+.cmd-topo, .cmd-rodape { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.cmd-tipo { font-size: .72rem; font-weight: 700; letter-spacing: .06em; background: var(--brasa); color: #fff; border-radius: 4px; padding: 1px 6px; }
+.cmd-card .nome { font-size: 2rem; margin: 4px 0; word-break: break-word; }
+.cmd-item.oculto { display: none; }
+/* v8: tela de pedidos do garçom */
+.passo-titulo { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 6px 0 10px; }
+.passo-n { background: var(--brasa); color: #fff; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+.itens-pedidos summary { display: flex; justify-content: space-between; align-items: center; background: #fffdf8; border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; cursor: pointer; font-weight: 600; list-style: none; }
+.itens-pedidos summary::-webkit-details-marker { display: none; }
+.itens-pedidos summary strong { color: var(--brasa); }
+
+/* v10: avisos com quebra de linha, botão de envio fixo no celular */
+.aviso-central span { white-space: pre-line; }
+.barra-enviar { display: none; }
+@media (max-width: 768px) {
+  .barra-enviar:not([hidden]) { display: flex; position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 1050; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--brasa); color: #fff; box-shadow: 0 10px 28px rgba(31,24,19,.35); }
+  .barra-enviar small { display: block; opacity: .9; font-size: .8rem; }
+  .barra-enviar strong { font-size: 1.25rem; }
+  #lancador { padding-bottom: 76px; }
+  .prod-btn { padding: 8px 4px; min-height: 96px; justify-content: center; }
+  .prod-btn .n { font-size: .78rem; }
+  .prod-btn .p { font-size: .76rem; font-weight: 700; }
+  .chips .btn { padding: 8px 14px; font-size: .95rem; }
+}
+
+/* v11: envio pela barra laranja fixa também no computador; botão interno oculto */
+#lancador [data-r="enviar"] { display: none !important; }
+.barra-enviar:not([hidden]) { display: flex; position: fixed; right: 24px; bottom: 16px; width: min(460px, calc(100vw - 48px)); z-index: 1050; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-radius: 12px; background: var(--brasa); color: #fff; box-shadow: 0 10px 28px rgba(31,24,19,.35); }
+.barra-enviar small { display: block; opacity: .9; font-size: .85rem; }
+.barra-enviar strong { font-size: 1.3rem; }
+#lancador { padding-bottom: 84px; }
+@media (max-width: 768px) {
+  .barra-enviar:not([hidden]) { left: 8px; right: 8px; bottom: 8px; width: auto; padding: 10px 12px; }
+}
+
+.barra-comanda .opacity-75 { color: #fff; }
+.barra-comanda .btn-sair-comanda { width: 52px; height: 52px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px solid #fff; color: #fff; text-decoration: none; }
+.barra-comanda .btn-sair-comanda:active, .barra-comanda .btn-sair-comanda:hover { background: #fff; color: var(--brasa); }
+/* Faixa piscando com mesa e nº da comanda na frente de caixa */
+.faixa-comanda { background: #1f8a3b; color: #fff; font-weight: 800; text-align: center; text-transform: uppercase;
+  letter-spacing: .5px; font-size: 1.15rem; padding: 8px 10px; border-radius: 8px; margin: 4px 0 10px; animation: faixaPisca 1s steps(1) infinite; }
+@keyframes faixaPisca { 50% { opacity: .25; } }
+
+/* Caixa: painel de recebimento sempre visivel, so os itens rolam */
+.itens-receber{max-height:260px;overflow-y:auto;padding-right:4px}
+@media (min-width:992px){
+.painel-receber{position:sticky;top:.75rem;display:flex;flex-direction:column;max-height:calc(100vh - 1.5rem);overflow:hidden;padding-top:.75rem;padding-bottom:.5rem}
+.painel-receber>*{flex-shrink:0}
+.painel-receber h2{margin-bottom:.35rem}
+.painel-receber .faixa-comanda{margin-bottom:.35rem}
+.painel-receber .itens-receber{flex:1 1 auto;min-height:60px;max-height:none}
+.painel-receber .btn-link{padding-top:.15rem;padding-bottom:0}
+}
+
+/* Caixa: tela travada sem rolagem da pagina (desktop); so as listas rolam */
+@media (min-width:992px){
+.tela-fixa{display:flex;flex-direction:column;height:100vh;overflow:hidden;padding-bottom:.5rem}
+.tela-fixa>*{flex-shrink:0}
+.tela-fixa h1{font-size:2.2rem}
+.tela-caixa-corpo{flex:1 1 auto;min-height:0;overflow:hidden}
+.tela-caixa-corpo>.col-lg-7{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tela-caixa-corpo>.col-lg-7>form{flex-shrink:0}
+.tela-caixa-corpo .grid-cmd{flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;align-content:start}
+.tela-caixa-corpo>.col-lg-5{min-height:0}
+.tela-fixa .painel-receber{position:static;height:100%;max-height:none;overflow-y:auto;padding-top:.25rem}
+.tela-fixa .painel-receber h2{font-size:1.5rem}
+}
+
+/* v23: tela do caixa travada em qualquer resolucao (F11 ou janela normal); so os itens rolam */
+@media (min-width:992px){
+html:has(.tela-fixa),body:has(.tela-fixa){height:100%;overflow:hidden}
+.tela-fixa{height:100vh;height:100dvh;box-sizing:border-box;min-height:0}
+.tela-caixa-corpo{flex-wrap:nowrap;align-items:stretch}
+.tela-caixa-corpo>.col-lg-5{display:flex;flex-direction:column;overflow:hidden;height:100%}
+.tela-fixa .painel-receber{flex:1 1 auto;height:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.tela-fixa .painel-receber>*{flex-shrink:0}
+.tela-fixa .painel-receber .itens-receber{flex:1 1 0;min-height:48px;max-height:none;overflow-y:auto;scrollbar-gutter:stable}
+}
+@media (min-width:992px) and (max-height:820px){
+.tela-fixa h1{font-size:1.7rem;margin-bottom:0}
+.tela-fixa .painel-receber h2{font-size:1.25rem}
+.tela-fixa .faixa-comanda{font-size:1rem;padding:5px 8px}
+.tela-fixa .painel-receber .btn,.tela-fixa .painel-receber .form-control{padding-top:.25rem;padding-bottom:.25rem}
+}
+
+/* v24: comanda selecionada no caixa pisca em verde ate ser recebida */
+.grid-cmd .cmd-card.sel{background:#1f8a3b;color:#fff;border-left-color:#14632a;animation:faixaPisca 1s steps(1) infinite}
+.grid-cmd .cmd-card.sel .valor,.grid-cmd .cmd-card.sel .small{color:#fff}
+
+.painel-receber .credito-parcial{background:#e9f7ee;border:1px solid #1f8a3b;border-radius:8px;padding:.3rem .5rem;margin-top:.25rem;color:#14592a}
+
+/* Sugestões de produtos no caixa */
+.sug-prod{position:absolute;top:100%;left:0;right:0;z-index:1050;background:#fff;border:1px solid #d9530f;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.18);max-height:320px;overflow-y:auto;margin-top:2px}
+.sug-prod .sug-item{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;cursor:pointer;font-size:15px;color:#1f1813}
+.sug-prod .sug-item.ativo,.sug-prod .sug-item:hover{background:#d9530f;color:#fff}
+
+/* Atalhos de teclado do caixa */
+kbd.atalho{font-size:.7em;padding:1px 5px;border-radius:4px;background:rgba(0,0,0,.12);color:inherit;border:1px solid rgba(0,0,0,.18);font-family:inherit;font-weight:700;vertical-align:middle}
+.atalhos-dica{line-height:1.2}
+
+/* v29: linha do Total e rodape do painel (Imprimir/Cancelar comanda) sempre visiveis */
+.painel-receber .total-linha{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--borda);margin-top:.3rem;padding-top:.3rem;font-size:1.6rem;font-weight:700}
+.painel-receber .total-linha .total-valor{color:var(--brasa)}
+@media (min-width:992px){
+.content.tela-fixa{padding:10px 14px}
+.tela-fixa h1{font-size:1.6rem}
+.tela-fixa .kpi{padding:.4rem .6rem}
+.tela-fixa .kpi .v{font-size:1.2rem}
+.tela-fixa .painel-receber{padding:.5rem .75rem}
+.tela-fixa .painel-receber h2{font-size:1.2rem;margin-bottom:.15rem}
+.tela-fixa .painel-receber .faixa-comanda{font-size:.95rem;padding:4px 8px;margin:0 0 .35rem}
+.tela-fixa .painel-receber .total-linha{font-size:1.35rem;margin-top:.25rem;padding-top:.25rem}
+.tela-fixa .painel-receber .btn,.tela-fixa .painel-receber .form-control{padding-top:.2rem;padding-bottom:.2rem}
+.tela-fixa .painel-receber .itens-receber{min-height:32px}
+.tela-fixa .painel-receber .credito-parcial{margin-top:.15rem;padding:.15rem .4rem;font-size:.85rem}
+.tela-fixa .painel-receber .mb-2{margin-bottom:.4rem!important}
+.tela-fixa .atalhos-dica{font-size:.75rem}
+}
+
+/* v19: excluir item no caixa e janela de produtos do estoque */
+.btn-x-item{border:0;background:none;color:#dc3545;font-size:1rem;padding:0 0 0 .5rem;line-height:1;cursor:pointer}
+.btn-x-item:hover{color:#a71d2a}
+.item-cx{padding:1px 0}
+.modal-estoque{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center}
+.modal-estoque .me-caixa{background:#fff;color:#222;border-radius:12px;width:min(900px,94vw);max-height:86vh;display:flex;flex-direction:column;padding:14px;border-top:6px solid #e8630a}
+.modal-estoque .me-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:1.15rem}
+.modal-estoque .me-x{border:0;background:#e8630a;color:#fff;font-size:1.6rem;width:40px;height:40px;border-radius:8px;line-height:1}
+.modal-estoque .me-grade{overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.modal-estoque .me-prod{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid #ddd;border-radius:8px;background:#fafafa;padding:8px;gap:2px}
+.modal-estoque .me-prod:hover{border-color:#e8630a;background:#fff4ec}
+.modal-estoque .me-prod small{color:#777}.modal-estoque .me-prod b{color:#e8630a}
+.rel-menu .btn{min-width:170px}
+@media print{body:has(#relImprimir) *{visibility:hidden!important}#relImprimir,#relImprimir *{visibility:visible!important}#relImprimir{position:absolute;left:0;top:0;width:100%}.no-print{display:none!important}}
+
+/* v20: janela de produtos do estoque com fotos e categorias */
+.modal-estoque .me-caixa{width:min(1100px,96vw);max-height:90vh}
+.modal-estoque .me-topo{gap:10px}.modal-estoque .me-topo b{margin-right:auto}
+.modal-estoque .me-msg{font-size:.9rem;font-weight:600;color:#198754;opacity:0;transition:opacity .2s}.modal-estoque .me-msg.on{opacity:1}
+.modal-estoque .me-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.modal-estoque .me-cat{border:1px solid #e8630a;background:#fff;color:#e8630a;border-radius:20px;padding:4px 12px;font-size:.85rem;font-weight:600}
+.modal-estoque .me-cat.ativo,.modal-estoque .me-cat:hover{background:#e8630a;color:#fff}
+.modal-estoque .me-peso{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#e8630a;color:#fff;padding:8px;border-radius:8px;margin-bottom:8px;font-weight:600}
+.modal-estoque .me-peso .me-peso-in{width:160px;color:#000;font-size:1.2rem}
+.modal-estoque .me-grade{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.modal-estoque .me-prod img{width:100%;height:90px;object-fit:contain;border-radius:6px;background:#fff;margin-bottom:4px}
+.modal-estoque .me-prod.ok{border-color:#198754;background:#e9f7ef}
+.aviso-fundo{z-index:4000!important}.aviso-central{z-index:4001!important}
+/* v32: janela de peso centralizada acima da janela de produtos, padrão de notificação */
+.modal-estoque .me-peso{position:fixed;z-index:3500;top:50%;left:50%;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));flex-direction:column;align-items:stretch;gap:12px;margin:0;padding:22px 22px 18px;border-radius:12px;background:var(--brasa,#e8630a);color:#fff;font-size:1.25rem;text-align:center;box-shadow:0 0 0 100vmax rgba(31,24,19,.45),0 18px 48px rgba(31,24,19,.4)}
+.modal-estoque .me-peso .me-peso-in{width:100%;font-size:1.6rem;text-align:center;color:#000;font-weight:700}
+.modal-estoque .me-peso .me-peso-ok{font-size:1.1rem;padding:10px}
+.modal-estoque .me-peso .me-peso-cancel{font-size:1.1rem;padding:10px;color:#fff;border-color:#fff;background:transparent}
+.modal-estoque .me-peso .me-peso-cancel:hover{background:rgba(255,255,255,.18)}
+
+.btn-plus-item{border:0;background:none;color:#198754;font-size:1rem;padding:0 .5rem 0 0;line-height:1;cursor:pointer}
+.btn-plus-item:hover,.btn-plus-item:focus{color:#0f5132;outline:none}
+/* v37: sinal de - a direita do X, diminui a quantidade ate 01 */
+.btn-minus-item{border:0;background:none;color:#dc3545;font-size:1rem;padding:0 0 0 .5rem;line-height:1;cursor:pointer}
+.btn-minus-item:hover,.btn-minus-item:focus{color:#a71d2a;outline:none}
+.btn-plus-item:disabled,.btn-minus-item:disabled{color:#b3b9c0;cursor:default;pointer-events:none}
+.sep-cx{font-weight:700;margin:0 .45rem}

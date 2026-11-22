@@ -1,0 +1,4 @@
+ROTA 403 v23 - funcionalidades iguais ao Trem Bao, identidade e logo do Rota 403 mantidas.
+1) Envie todos os arquivos para /rota403 (NAO substitua config/config.php nem config/chave_seguranca.php existentes).
+2) Faca backup do banco e rode ZERAR_VENDAS_E_ESTOQUE.sql no phpMyAdmin para limpar vendas, comandas, pedidos e caixas e zerar o estoque.
+3) Ctrl+F5.
