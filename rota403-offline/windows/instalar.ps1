@@ -118,7 +118,17 @@ return [
     if ($IpsLan) { $argsSvc += @('-IpsLan', $IpsLan) }
     & powershell.exe @argsSvc
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar os serviços web.' }
-    if (-not (Esperar-Porta $PortaHttp 60)) { throw "Servidor web não respondeu na porta $PortaHttp. Veja $($C.Logs)" }
+    if (-not (Esperar-Porta $PortaHttp 60)) {
+        L '--- DIAGNÓSTICO do servidor web ---'
+        try { Get-Service Rota403DB, Rota403Web -ErrorAction Stop | ForEach-Object { L ('serviço {0}: {1}' -f $_.Name, $_.Status) } } catch { L ('serviços: ' + $_.Exception.Message) }
+        $caddyExe = Join-Path $C.Caddy 'caddy.exe'
+        L ('caddy validate: ' + ((& $caddyExe validate --config (Join-Path $C.Dados 'Caddyfile') --adapter caddyfile 2>&1 | Out-String).Trim()))
+        foreach ($nome in 'web.log', 'Rota403Web.err.log', 'Rota403Web.out.log', 'Rota403Web.wrapper.log') {
+            $arq = Join-Path $C.Logs $nome
+            if (Test-Path -LiteralPath $arq) { L ("--- {0} (final) ---" -f $nome); Get-Content -LiteralPath $arq -Tail 15 | ForEach-Object { L ('   ' + $_) } }
+        }
+        throw "Servidor web não respondeu na porta $PortaHttp. Veja $($C.Logs)\instalacao.log"
+    }
     # ---- backup diário
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'backup.ps1') -Agendar -Raiz $C.Raiz -Dados $C.Dados
     L 'Tarefa de backup diário agendada (03:30).'

@@ -237,18 +237,19 @@ begin
     WizardForm.StatusLabel.Caption := 'Configurando banco de dados e serviços (pode levar alguns minutos)...';
     if (not PowerShellComLog(Args, DadosDir + '\logs\instalador-powershell.log', Codigo)) or (Codigo <> 0) then begin
       DeleteFile(ArqAdmin);
-      MsgBox('A configuração falhou (código ' + IntToStr(Codigo) + '). Nada foi apagado.' + #13#10#13#10 +
+      // NÃO usa Abort: Abort desfaz (rollback) os arquivos e some com o que precisa ser diagnosticado.
+      MsgBox('A configuração falhou (código ' + IntToStr(Codigo) + '). Os arquivos foram mantidos para diagnóstico; nenhum dado foi apagado.' + #13#10#13#10 +
              'Últimas linhas do erro:' + #13#10 + UltimasLinhas(DadosDir + '\logs\instalador-powershell.log', 900) + #13#10#13#10 +
-             'Logs completos em: ' + DadosDir + '\logs', mbCriticalError, MB_OK);
-      Abort;
-    end;
-    DeleteFile(ArqAdmin);
-    RegWriteStringValue(HKLM, 'Software\Rota403', 'PortaHttp', IntToStr(Http));
-    RegWriteStringValue(HKLM, 'Software\Rota403', 'PortaDb', IntToStr(Db));
-    SaveStringToFile(ExpandConstant('{app}\windows\porta-http.txt'), IntToStr(Http), False);
-    if Atualizando then begin
-      if not PowerShell('-File "' + ExpandConstant('{app}\windows\atualizar.ps1') + '" -Fase Depois -PortaHttp ' + IntToStr(Http), Codigo) or (Codigo <> 0) then
-        MsgBox('A atualização terminou mas a checagem de saúde falhou. Seus dados estão intactos e há um backup "pre-atualizacao" em ' + DadosDir + '\backups. Veja logs\atualizacao.log.', mbError, MB_OK);
+             'Logs completos em: ' + DadosDir + '\logs' + #13#10 + 'Ao concluir, o sistema NÃO estará funcionando até a correção.', mbCriticalError, MB_OK);
+    end else begin
+      DeleteFile(ArqAdmin);
+      RegWriteStringValue(HKLM, 'Software\Rota403', 'PortaHttp', IntToStr(Http));
+      RegWriteStringValue(HKLM, 'Software\Rota403', 'PortaDb', IntToStr(Db));
+      SaveStringToFile(ExpandConstant('{app}\windows\porta-http.txt'), IntToStr(Http), False);
+      if Atualizando then begin
+        if not PowerShell('-File "' + ExpandConstant('{app}\windows\atualizar.ps1') + '" -Fase Depois -PortaHttp ' + IntToStr(Http), Codigo) or (Codigo <> 0) then
+          MsgBox('A atualização terminou mas a checagem de saúde falhou. Seus dados estão intactos e há um backup "pre-atualizacao" em ' + DadosDir + '\backups. Veja logs\atualizacao.log.', mbError, MB_OK);
+      end;
     end;
   end;
 end;
