@@ -35,10 +35,10 @@ if ($lan) {
     if (!empty($o['nome']) && preg_match('/^[a-z0-9.-]+$/i', $o['nome'])) $sites[] = 'https://' . $o['nome'] . ':' . $pTls;
 }
 $ca = $dados . '/caddy-data/pki/authorities/local';
-$global = "\tadmin off\n\tauto_https disable_redirects\n\tstorage file_system {$dados}/caddy-data\n" . ($lan ? "\tlocal_certs\n\tskip_install_trust\n" : '');
+$global = "\tadmin off\n\tauto_https disable_redirects\n\tstorage file_system \"{$dados}/caddy-data\"\n" . ($lan ? "\tlocal_certs\n\tskip_install_trust\n" : '');
 $app = <<<APP
 (app) {
-	root * {$raiz}
+	root * "{$raiz}"
 	encode gzip
 	# Nada de configuração, código interno, migrações, dados ou scripts acessível pela web
 	@bloqueado path /config/* /includes/* /storage/* /migrations/* /bin/* /tests/*
