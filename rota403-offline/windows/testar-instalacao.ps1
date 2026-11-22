@@ -15,13 +15,18 @@ function T([string]$Nome, [scriptblock]$Teste) {
 }
 function Escuta([int]$Porta) { Get-NetTCPConnection -State Listen -LocalPort $Porta -ErrorAction SilentlyContinue }
 function Http([string]$Caminho) {
-    try { $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:{0}{1}" -f $PortaHttp, $Caminho) -TimeoutSec 20 -MaximumRedirection 0 -ErrorAction Stop; return [pscustomobject]@{ Cod = [int]$r.StatusCode; Corpo = [string]$r.Content; Cab = $r.Headers } }
-    catch {
-        $ex = $_.Exception; $prop = $ex.PSObject.Properties['Response']
-        if ($prop -and $prop.Value) { return [pscustomobject]@{ Cod = [int]$prop.Value.StatusCode; Corpo = ''; Cab = @{} } }
-        if ($ex.Message -match 'redirec|redirect|moved|Found|máximo|maximum') { return [pscustomobject]@{ Cod = 302; Corpo = ''; Cab = @{} } }   # MaximumRedirection=0 no PS 5.1
-        return [pscustomobject]@{ Cod = 0; Corpo = ''; Cab = @{} }
-    }
+    # HttpWebRequest direto: sem seguir redirecionamentos e sem as particularidades do Invoke-WebRequest no PowerShell 5.1
+    $resp = $null
+    try {
+        $req = [System.Net.HttpWebRequest]::Create(("http://127.0.0.1:{0}{1}" -f $PortaHttp, $Caminho))
+        $req.AllowAutoRedirect = $false; $req.Timeout = 20000; $req.Method = 'GET'
+        try { $resp = $req.GetResponse() } catch [System.Net.WebException] { $resp = $_.Exception.Response }
+        if (-not $resp) { return [pscustomobject]@{ Cod = 0; Corpo = ''; Cab = @{} } }
+        $corpo = ''
+        try { $sr = New-Object System.IO.StreamReader($resp.GetResponseStream(), [System.Text.Encoding]::UTF8); $corpo = $sr.ReadToEnd(); $sr.Close() } catch { }
+        return [pscustomobject]@{ Cod = [int]$resp.StatusCode; Corpo = $corpo; Cab = $resp.Headers }
+    } catch { return [pscustomobject]@{ Cod = 0; Corpo = ''; Cab = @{} } }
+    finally { if ($resp) { $resp.Close() } }
 }
 $php = Join-Path $C.Php 'php.exe'; $ini = Join-Path $C.Php 'php.ini'
 
@@ -61,7 +66,7 @@ T 'Health da API de sync responde' { (Http '/api/sync/v1/health').Cod -eq 200 }
 $cfg = Ler-ConfigApp $C; $cli = Cliente-Maria $C
 function Sql([string]$q) { $env:MYSQL_PWD = [string]$cfg.DB_PASS; try { (& $cli -h 127.0.0.1 -P $PortaDb -u $cfg.DB_USER -N -B -e $q $cfg.DB_NAME) } finally { Remove-Item Env:\MYSQL_PWD -ErrorAction SilentlyContinue } }
 T 'Esquema na versão 3 (migrações aplicadas)' { (Sql 'SELECT MAX(versao) FROM schema_migrations') -eq '3' }
-T 'Acentos preservados no banco (formas de pagamento em UTF-8, sem "?")' { @{ Ok = ((Sql "SELECT COUNT(*) FROM formas_pagamento WHERE nome LIKE '%?%'") -eq '0') -and ((Sql "SELECT COUNT(*) FROM formas_pagamento WHERE HEX(nome) LIKE '%C3A3%'") -ge 1); Det = (Sql 'SELECT GROUP_CONCAT(HEX(nome) SEPARATOR " ") FROM formas_pagamento') } }
+T 'Acentos preservados no banco (formas de pagamento em UTF-8, sem "?")' { $semInterrog = (Sql "SELECT COUNT(*) FROM formas_pagamento WHERE nome LIKE '%?%'"); $comAcento = (Sql "SELECT COUNT(*) FROM formas_pagamento WHERE HEX(nome) LIKE '%C3A3%'"); @{ Ok = (($semInterrog -eq '0') -and ([int]$comAcento -ge 1)); Det = "com '?': $semInterrog; com 'ã' em UTF-8: $comAcento" } }
 T '14 tabelas base + tabelas de sync' { [int](Sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()") -ge 24 }
 T 'Existe pelo menos 1 administrador' { [int](Sql "SELECT COUNT(*) FROM usuarios WHERE nivel='admin' AND ativo=1") -ge 1 }
 T 'Nome do administrador está cifrado (enc1:)' { (Sql "SELECT COUNT(*) FROM usuarios WHERE nome NOT LIKE 'enc1:%'") -eq '0' }
