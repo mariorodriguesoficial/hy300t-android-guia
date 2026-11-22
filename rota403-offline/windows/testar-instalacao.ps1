@@ -13,7 +13,7 @@ function T([string]$Nome, [scriptblock]$Teste) {
     $null = $res.Add([pscustomobject]@{ teste = $Nome; resultado = $(if ($ok) { 'PASS' } else { 'FAIL' }); detalhe = $det })
     Write-Host ('{0} {1} {2}' -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $Nome, $det)
 }
-function Escuta([int]$Porta) { , @(Get-NetTCPConnection -State Listen -LocalPort $Porta -ErrorAction SilentlyContinue) }
+function Escuta([int]$Porta) { Get-NetTCPConnection -State Listen -LocalPort $Porta -ErrorAction SilentlyContinue }
 function Http([string]$Caminho) {
     try { $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:{0}{1}" -f $PortaHttp, $Caminho) -TimeoutSec 20 -MaximumRedirection 0 -ErrorAction Stop; return [pscustomobject]@{ Cod = [int]$r.StatusCode; Corpo = [string]$r.Content; Cab = $r.Headers } }
     catch {
@@ -55,7 +55,7 @@ T 'Manifesto PWA e service worker servidos' { (Http '/manifest.php').Cod -eq 200
 foreach ($p in '/config/config.local.php', '/config/chave_seguranca.php', '/includes/Sync.php', '/migrations/001_sync_base.php', '/bin/migrate.php', '/storage/php-error.log') {
     T "Bloqueado: $p" { (Http $p).Cod -eq 403 }
 }
-T 'URL sem .php (/comandas) é reescrita (redireciona ao login)' { (Http '/comandas').Cod -in 301, 302 }
+T 'URL sem .php (/comandas) é reescrita (redireciona ao login)' { $r = Http '/comandas'; @{ Ok = ($r.Cod -in 301, 302); Det = "HTTP $($r.Cod)" } }
 T 'Health da API de sync responde' { (Http '/api/sync/v1/health').Cod -eq 200 }
 # ---- banco e migrações
 $cfg = Ler-ConfigApp $C; $cli = Cliente-Maria $C

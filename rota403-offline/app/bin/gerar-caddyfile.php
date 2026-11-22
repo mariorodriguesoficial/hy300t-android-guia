@@ -53,7 +53,8 @@ $app = <<<APP
 	file_server
 }
 APP;
-$blocos = "http://127.0.0.1:{$pHttp} {\n\timport app\n}\n";
+// bind: sem isto o Caddy escuta em TODAS as interfaces (o endereço do site só casa o host, não limita o listener)
+$blocos = "http://127.0.0.1:{$pHttp} {\n\tbind 127.0.0.1\n\timport app\n}\n";
 if ($lan) $blocos .= implode(', ', $sites) . " {\n\ttls internal\n\t# Só o certificado PÚBLICO da CA local, para instalar no celular\n\thandle /rota403-ca.crt {\n\t\troot * {$ca}\n\t\trewrite * /root.crt\n\t\theader Content-Disposition \"attachment; filename=rota403-ca.crt\"\n\t\tfile_server\n\t}\n\thandle {\n\t\timport app\n\t}\n}\n";
 $conf = "# Gerado por bin/gerar-caddyfile.php — não edite à mão.\n{\n{$global}}\n\n{$app}\n\n{$blocos}";
 $saida = $o['saida'] ?? ($dados . '/Caddyfile'); @mkdir(dirname($saida), 0700, true);

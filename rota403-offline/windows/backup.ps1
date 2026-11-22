@@ -21,19 +21,19 @@ if ($Agendar) {
     exit 0
 }
 
-$stage = $null; $credFile = $null
+$stage = $null
 try {
     Garantir-Pasta $C.Backups; Garantir-Pasta $C.Tmp
     $cfg = Ler-ConfigApp $C
     $dump = Join-Path $C.Maria 'bin\mariadb-dump.exe'; if (-not (Test-Path $dump)) { $dump = Join-Path $C.Maria 'bin\mysqldump.exe' }
     $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
     $stage = Join-Path $C.Tmp ("bkp-" + $ts); Garantir-Pasta $stage
-    # credenciais em arquivo temporário (nunca na linha de comando)
-    $credFile = Join-Path $C.Tmp ("cred-" + (Nova-Senha 6) + '.cnf')
-    Set-Content -LiteralPath $credFile -Encoding ASCII -Value @('[client]', "user=$($cfg.DB_USER)", "password=$($cfg.DB_PASS)", "host=$($cfg.DB_HOST)", "port=$($cfg.DB_PORT)")
-    Proteger-Caminho $credFile @()
+    # credenciais por variável de ambiente do processo (não aparecem na linha de comando nem ficam em arquivo)
     $sqlFile = Join-Path $stage 'dump.sql'
-    $null = Executar $dump @("--defaults-extra-file=$credFile", '--single-transaction', '--routines', '--triggers', '--events', '--hex-blob', '--default-character-set=utf8mb4', "--result-file=$sqlFile", $cfg.DB_NAME) 'mariadb-dump'
+    $env:MYSQL_PWD = [string]$cfg.DB_PASS
+    try {
+        $null = Executar $dump @('-h', [string]$cfg.DB_HOST, '-P', [string]$cfg.DB_PORT, '-u', [string]$cfg.DB_USER, '--single-transaction', '--routines', '--triggers', '--events', '--hex-blob', '--default-character-set=utf8mb4', "--result-file=$sqlFile", [string]$cfg.DB_NAME) 'mariadb-dump'
+    } finally { Remove-Item Env:\MYSQL_PWD -ErrorAction SilentlyContinue }
     if ((Get-Item $sqlFile).Length -lt 2000) { throw 'Dump suspeito (muito pequeno).' }
     # uploads e chave
     $up = Join-Path $C.App 'uploads'; if (Test-Path $up) { Copy-Item -LiteralPath $up -Destination (Join-Path $stage 'uploads') -Recurse -Force }
@@ -90,6 +90,5 @@ try {
 } catch {
     L ('ERRO no backup: ' + $_.Exception.Message); exit 1
 } finally {
-    if ($credFile) { Remove-Item -LiteralPath $credFile -Force -ErrorAction SilentlyContinue }
     if ($stage) { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
 }
