@@ -64,6 +64,18 @@ class TestMigracao(unittest.TestCase):
         subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True)
         self.assertEqual(val('select max(versao) from schema_migrations'), '2')
 
+class TestConfigComBom(unittest.TestCase):
+    def test_bom_no_config_local_nao_quebra_cabecalhos(self):
+        arq = os.path.join(APPDIR, 'config', 'config.local.php'); orig = open(arq, 'rb').read()
+        try:
+            open(arq, 'wb').write(b'\xef\xbb\xbf' + orig)          # como o PowerShell 5.1 grava com -Encoding UTF8
+            c = Cliente(); s, b = c.req('/login')
+            self.assertEqual(s, 200); self.assertTrue(b.lstrip().lower().startswith('<!doctype'), repr(b[:20]))
+            self.assertNotIn('\ufeff', b[:5])
+            log = os.path.join(APPDIR, 'storage', 'php-error.log')
+            self.assertFalse(os.path.exists(log) and 'headers already sent' in open(log).read())
+        finally: open(arq, 'wb').write(orig)
+
 class TestTriggers(unittest.TestCase):
     def test_rev_estoque_ledger_tombstone(self):
         sql("insert into produtos(nome,preco,estoque) values('TR',5,10)")

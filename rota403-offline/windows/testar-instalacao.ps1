@@ -15,7 +15,7 @@ function T([string]$Nome, [scriptblock]$Teste) {
 }
 function Escuta([int]$Porta) { @(Get-NetTCPConnection -State Listen -LocalPort $Porta -ErrorAction SilentlyContinue) }
 function Http([string]$Caminho) {
-    try { $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:{0}{1}" -f $PortaHttp, $Caminho) -TimeoutSec 20 -MaximumRedirection 0 -ErrorAction Stop; return [pscustomobject]@{ Cod = [int]$r.StatusCode; Corpo = [string]$r.Content } }
+    try { $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:{0}{1}" -f $PortaHttp, $Caminho) -TimeoutSec 20 -MaximumRedirection 0 -ErrorAction Stop; return [pscustomobject]@{ Cod = [int]$r.StatusCode; Corpo = [string]$r.Content; Cab = $r.Headers } }
     catch { $resp = $_.Exception.Response; if ($resp) { return [pscustomobject]@{ Cod = [int]$resp.StatusCode; Corpo = '' } } else { return [pscustomobject]@{ Cod = 0; Corpo = '' } } }
 }
 $php = Join-Path $C.Php 'php.exe'; $ini = Join-Path $C.Php 'php.ini'
@@ -37,6 +37,9 @@ if ($LanEsperada) {
 T 'Nenhuma regra de firewall abre MariaDB ou HTTP' { $x = Get-NetFirewallRule -Direction Inbound -Enabled True -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like 'Rota403*' } | Get-NetFirewallPortFilter | Where-Object { $_.LocalPort -in @("$PortaDb", "$PortaHttp") }; @($x).Count -eq 0 }
 # ---- aplicação
 T 'Tela de login responde 200' { $r = Http '/login'; @{ Ok = ($r.Cod -eq 200 -and $r.Corpo -match 'Rota 403'); Det = "HTTP $($r.Cod)" } }
+T 'config.local.php sem BOM UTF-8 (BOM quebra sessão/cookies)' { $b = [System.IO.File]::ReadAllBytes($C.Config); -not ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF) }
+T 'Login: HTML começa em <!doctype (sem BOM) e define cookie de sessão HttpOnly' { $r = Http '/login'; $ck = [string]$r.Cab['Set-Cookie']; @{ Ok = ($r.Corpo.TrimStart([char]0xFEFF) -eq $r.Corpo) -and ($r.Corpo -match '^\s*<!doctype') -and ($ck -match 'HttpOnly'); Det = $ck } }
+T 'Log do PHP sem avisos "headers already sent"' { $f = Join-Path $C.Logs 'php-error.log'; (-not (Test-Path $f)) -or (-not ((Get-Content $f -Tail 200 -ErrorAction SilentlyContinue) -match 'headers already sent')) }
 T 'Login sem requisições externas (CDN/fontes)' { $r = Http '/login'; -not ($r.Corpo -match '(src|href)=["'']https?://(?!127\.0\.0\.1|localhost)') }
 T 'Manifesto PWA e service worker servidos' { (Http '/manifest.php').Cod -eq 200 -and (Http '/sw.js').Cod -eq 200 }
 foreach ($p in '/config/config.local.php', '/config/chave_seguranca.php', '/includes/Sync.php', '/migrations/001_sync_base.php', '/bin/migrate.php', '/storage/php-error.log') {

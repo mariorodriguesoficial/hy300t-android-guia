@@ -91,7 +91,8 @@ return [
     'COOKIE_SECURE' => false,
 ];
 "@
-            Set-Content -LiteralPath $C.Config -Value $cfg -Encoding UTF8
+            # PHP exige arquivo SEM BOM (um BOM vira saída antes dos cabeçalhos e quebra sessão/cookies)
+            [System.IO.File]::WriteAllText($C.Config, $cfg, (New-Object System.Text.UTF8Encoding($false)))
             $null = & icacls.exe $C.Config /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' ("{0}:R" -f $script:ContaServico) 2>&1
         } elseif (-not $cfgExiste) {
             throw 'O banco rota403 existe mas config.local.php sumiu. Restaure o arquivo do backup (pasta backups) ou contate o suporte.'

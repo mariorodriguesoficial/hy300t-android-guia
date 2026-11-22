@@ -9,7 +9,9 @@ if (!is_file($__local)) {
     http_response_code(500);
     exit('Configuração local ausente (config/config.local.php).');
 }
+ob_start();                       // descarta saída acidental (ex.: BOM UTF-8) do arquivo local
 $__cfg = require $__local;
+ob_end_clean();
 foreach (['DB_HOST', 'DB_USER', 'DB_PASS', 'DB_NAME'] as $__k) {
     if (!array_key_exists($__k, $__cfg)) { http_response_code(500); exit('Configuração inválida: ' . $__k); }
 }
