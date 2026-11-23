@@ -2,6 +2,14 @@
 
 **Isto altera o banco de PRODUÇÃO.** Faça num horário de pouco movimento e só depois de ter backup. Eu (o assistente) não tenho acesso à hospedagem: nada disto foi aplicado lá.
 
+**Montar o zip no seu PC** (o repositório ignora `*.zip`, então o zip não vem pronto; monte a partir da pasta `deploy-online\arquivos`):
+```powershell
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+Remove-Item C:\Rota403-src\rota403-sync-online.zip -ErrorAction SilentlyContinue
+[System.IO.Compression.ZipFile]::CreateFromDirectory("C:\Rota403-src\rota403-offline\deploy-online\arquivos", "C:\Rota403-src\rota403-sync-online.zip")
+```
+(Use esse comando e não `Compress-Archive`: o do Windows PowerShell 5.1 grava `\` nos nomes e quebra a extração em servidor Linux.)
+
 O pacote `rota403-sync-online.zip` contém **somente arquivos novos** (não substitui nenhum arquivo do sistema atual): `includes/{Migrator,Sync,SyncSpec,SyncServer}.php`, `migrations/`, `api/sync/v1/`, `bin/` e `sync-setup-web.php`. Foi testado contra o código **v23 original** (21 testes de sincronização, `ONLINE_V23=1 tests/run_sync.sh`), não contra uma instalação real da Hostinger.
 
 ## 0. Antes de tudo
