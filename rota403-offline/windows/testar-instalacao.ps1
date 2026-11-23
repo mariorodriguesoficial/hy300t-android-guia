@@ -65,7 +65,7 @@ T 'Health da API de sync responde' { (Http '/api/sync/v1/health').Cod -eq 200 }
 # ---- banco e migrações
 $cfg = Ler-ConfigApp $C; $cli = Cliente-Maria $C
 function Sql([string]$q) { $env:MYSQL_PWD = [string]$cfg.DB_PASS; try { (& $cli -h 127.0.0.1 -P $PortaDb -u $cfg.DB_USER -N -B -e $q $cfg.DB_NAME) } finally { Remove-Item Env:\MYSQL_PWD -ErrorAction SilentlyContinue } }
-T 'Esquema na versão 3 (migrações aplicadas)' { (Sql 'SELECT MAX(versao) FROM schema_migrations') -eq '3' }
+T 'Esquema na versão 4 (migrações aplicadas)' { (Sql 'SELECT MAX(versao) FROM schema_migrations') -eq '4' }
 T 'Acentos preservados no banco (formas de pagamento em UTF-8, sem "?")' { $semInterrog = (Sql "SELECT COUNT(*) FROM formas_pagamento WHERE nome LIKE '%?%'"); $comAcento = (Sql "SELECT COUNT(*) FROM formas_pagamento WHERE HEX(nome) LIKE '%C3A3%'"); @{ Ok = (($semInterrog -eq '0') -and ([int]$comAcento -ge 1)); Det = "com '?': $semInterrog; com 'ã' em UTF-8: $comAcento" } }
 T '14 tabelas base + tabelas de sync' { [int](Sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()") -ge 24 }
 T 'Existe pelo menos 1 administrador' { [int](Sql "SELECT COUNT(*) FROM usuarios WHERE nivel='admin' AND ativo=1") -ge 1 }

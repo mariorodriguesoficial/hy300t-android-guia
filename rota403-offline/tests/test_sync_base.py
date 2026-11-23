@@ -50,7 +50,7 @@ class TestMigracao(unittest.TestCase):
     def test_idempotente_e_uuid_unico(self):
         out = subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True, text=True).stdout
         self.assertNotIn('Aplicada', out)           # segunda execução não reaplica
-        self.assertEqual(val('select max(versao) from schema_migrations'), '3')
+        self.assertEqual(val('select max(versao) from schema_migrations'), '4')
         for t in ['caixas','categorias','comandas','comanda_itens','comanda_pagamentos','pedidos','produtos','formas_pagamento']:
             self.assertEqual(val(f'select count(*)-count(distinct uuid) from {t}'), '0', t)
             self.assertEqual(val(f'select count(*) from {t} where uuid is null'), '0', t)
@@ -62,7 +62,7 @@ class TestMigracao(unittest.TestCase):
         # restaura: recalcula via PHP
         sql("delete from schema_migrations where versao=2")
         subprocess.run(['php', 'bin/migrate.php'], cwd=APPDIR, capture_output=True)
-        self.assertEqual(val('select max(versao) from schema_migrations'), '3')
+        self.assertEqual(val('select max(versao) from schema_migrations'), '4')
 
 class TestAcentosSeed(unittest.TestCase):
     def test_migracao_003_repara_acentos_corrompidos(self):
