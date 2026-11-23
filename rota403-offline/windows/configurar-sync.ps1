@@ -26,11 +26,13 @@ try {
     if ($Url -notmatch '^https://') { throw 'A URL precisa ser HTTPS.' }
     $Url = $Url.TrimEnd('/')
     if ($SecretArquivo) {
-        # Alternativa quando colar no prompt oculto não funciona: lê de um arquivo de texto e APAGA o arquivo em seguida.
+        # Alternativa quando colar no prompt oculto não funciona: lê de um arquivo de texto (extrai os 64 caracteres hex).
         if (-not (Test-Path -LiteralPath $SecretArquivo)) { throw "Arquivo do secret não encontrado: $SecretArquivo" }
-        $segredo = ([System.IO.File]::ReadAllText($SecretArquivo)).Trim()
-        Remove-Item -LiteralPath $SecretArquivo -Force
-        L 'Secret lido do arquivo (arquivo apagado).'
+        $textoSecret = [System.IO.File]::ReadAllText($SecretArquivo)
+        $achados = @([regex]::Matches($textoSecret, '(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])'))
+        if ($achados.Count -ne 1) { throw ("O arquivo precisa conter exatamente 1 sequência de 64 caracteres hexadecimais; encontrei {0}." -f $achados.Count) }
+        $segredo = $achados[0].Value
+        L 'Secret lido do arquivo (será apagado ao final, após gravar a configuração).'
     } else {
         $sec = Read-Host 'Cole o SECRET do dispositivo (não aparece nada na tela; use botão direito para colar e tecle Enter)' -AsSecureString
         $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
@@ -46,9 +48,15 @@ try {
         Garantir-Pasta $dirCa
         L 'Baixando pacote de certificados raiz (curl.se)...'
         Invoke-WebRequest -UseBasicParsing -Uri 'https://curl.se/ca/cacert.pem' -OutFile $ca
-        $esperado = ((Invoke-WebRequest -UseBasicParsing -Uri 'https://curl.se/ca/cacert.pem.sha256').Content -split '\s+')[0].Trim().ToLower()
+        Garantir-Pasta $C.Tmp
+        $tmpSha = Join-Path $C.Tmp 'cacert.pem.sha256'
+        Invoke-WebRequest -UseBasicParsing -Uri 'https://curl.se/ca/cacert.pem.sha256' -OutFile $tmpSha
+        $esperado = (([System.IO.File]::ReadAllText($tmpSha)) -split '\s+' | Where-Object { $_ })[0].Trim().ToLower()
+        Remove-Item $tmpSha -Force -ErrorAction SilentlyContinue
         $obtido = (Get-FileHash -Algorithm SHA256 -LiteralPath $ca).Hash.ToLower()
-        if ($esperado -ne $obtido) { Remove-Item $ca -Force; throw 'Hash do pacote de certificados não confere. Abortado.' }
+        if ($esperado -notmatch '^[0-9a-f]{64}$') { Remove-Item $ca -Force; throw "Não consegui ler o hash publicado em curl.se (recebi: $esperado)." }
+        if ($esperado -ne $obtido) { Remove-Item $ca -Force; throw ("Hash do pacote de certificados não confere (publicado {0}, baixado {1}). Tente de novo em alguns minutos; se persistir, avise o suporte." -f $esperado, $obtido) }
+        L 'Pacote de certificados verificado (SHA256 confere).'
     }
     # 2) o servidor online responde? (health é público e não revela dados)
     try { $h = Invoke-WebRequest -UseBasicParsing -Uri ($Url + '/health') -TimeoutSec 25; $j = $h.Content | ConvertFrom-Json }
@@ -68,6 +76,7 @@ try {
     $linhas += '];'
     [System.IO.File]::WriteAllText($C.Config, ($linhas -join "`r`n") + "`r`n", (New-Object System.Text.UTF8Encoding($false)))
     L 'config.local.php atualizado (SYNC_ENABLED=true).'
+    if ($SecretArquivo -and (Test-Path -LiteralPath $SecretArquivo)) { Remove-Item -LiteralPath $SecretArquivo -Force; L 'Arquivo do secret apagado.' }
     $segredo = $null
 
     # 4) primeira sincronização manual: mostra o resultado
@@ -80,4 +89,8 @@ try {
     if (-not $SemIniciar) { Set-Service Rota403Sync -StartupType Automatic; Restart-Service Rota403Sync; L 'Serviço Rota403Sync iniciado.' }
     Write-Host 'Sincronização ligada. Acompanhe em: Rota 403 > Sincronização (menu).' -ForegroundColor Green
     exit 0
-} catch { L ('ERRO: ' + $_.Exception.Message); Write-Host ('ERRO: ' + $_.Exception.Message) -ForegroundColor Red; exit 1 }
+} catch {
+    L ('ERRO: ' + $_.Exception.Message); Write-Host ('ERRO: ' + $_.Exception.Message) -ForegroundColor Red
+    if ($SecretArquivo -and (Test-Path -LiteralPath $SecretArquivo)) { Write-Host "O arquivo $SecretArquivo foi MANTIDO para você tentar de novo. Apague-o quando terminar." -ForegroundColor Yellow }
+    exit 1
+}
