@@ -3,7 +3,8 @@
  Uso: restaurar.ps1 -Arquivo C:\...\rota403-AAAA....zip [-Confirmar RESTAURAR]
 #>
 param([Parameter(Mandatory = $true)][string]$Arquivo, [string]$Confirmar = '', [switch]$SemBackupPrevio,
-      [string]$Raiz = (Split-Path -Parent $PSScriptRoot), [string]$Dados = (Join-Path $env:ProgramData 'Rota403'))
+      [string]$Raiz = '', [string]$Dados = (Join-Path $env:ProgramData 'Rota403'))
+if (-not $Raiz) { $Raiz = Split-Path -Parent $PSScriptRoot }   # (não usar $PSScriptRoot em valor padrão de parâmetro: falha com parâmetro obrigatório)
 . "$PSScriptRoot\lib.ps1"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $C = Get-Caminhos $Raiz $Dados

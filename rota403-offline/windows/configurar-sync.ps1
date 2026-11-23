@@ -7,8 +7,9 @@
 param(
     [Parameter(Mandatory = $true)][string]$DeviceId,
     [string]$Url = 'https://mrinformatica.inf.br/rota403/api/sync/v1',
-    [string]$Raiz = (Split-Path -Parent $PSScriptRoot), [string]$Dados = (Join-Path $env:ProgramData 'Rota403'), [switch]$SemIniciar
+    [string]$Raiz = '', [string]$Dados = (Join-Path $env:ProgramData 'Rota403'), [switch]$SemIniciar
 )
+if (-not $Raiz) { $Raiz = Split-Path -Parent $PSScriptRoot }   # (não usar $PSScriptRoot em valor padrão de parâmetro: falha com parâmetro obrigatório)
 . "$PSScriptRoot\lib.ps1"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $C = Get-Caminhos $Raiz $Dados
