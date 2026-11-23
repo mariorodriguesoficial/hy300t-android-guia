@@ -234,6 +234,7 @@ class T08_Conflitos(Base):
         C['lo'].post('/caixa', acao='abrir', saldo='0') if val('local', "select count(*) from caixas where status='aberto'") == '0' else None
         C['on'].lancar(cid, pid('online', 'Cola'), 1)
         C['on'].post('/caixa', acao='receber', comanda_id=cid, **{'pg_forma[]': 'PIX', 'pg_valor[]': '10,00'})
+        time.sleep(3)                                            # item realmente POSTERIOR ao fechamento
         C['lo'].lancar(cid, pid('local', 'Espeto'), 1)          # local ainda vê aberta e lança item
         sync_ate_estabilizar()
         for db in ('online', 'local'): self.assertEqual(val(db, f"select status from comandas where id={cid}"), 'fechada', db)
@@ -275,6 +276,21 @@ class T09b_ScriptsNaoViaWeb(Base):
             except urllib.error.HTTPError as e: s = e.code
             self.assertEqual(s, 403, p)
         self.assertEqual(val('online', "select count(*) from schema_migrations"), val('online', "select count(*) from schema_migrations"))
+
+class T12_HistoricoFechado(Base):
+    def test_venda_fechada_importada_nao_gera_conflito(self):
+        for pad in range(3):
+            cid = nova_comanda(C['on'], 'online', f'HIST{pad}'); C['on'].lancar(cid, pid('online', 'Espeto'), 2); C['on'].lancar(cid, pid('online', 'Cola'), 1)
+            caixa_aberto(C['on'], 'online')
+            C['on'].post('/caixa', acao='receber', comanda_id=cid, **{'pg_forma[]': 'PIX', 'pg_valor[]': '30,00'})
+        # venda direta (itens e fechamento no MESMO segundo) também não pode ser sinalizada
+        C['on'].post('/caixa', acao='venda_direta_finalizar', itens=json.dumps([{'id': pid('online', 'Cola'), 'q': 1}]), **{'pg_forma[]': 'PIX', 'pg_valor[]': '10,00'})
+        antes = {db: int(val(db, "select count(*) from sync_conflicts")) for db in ('online', 'local')}
+        sync_ate_estabilizar()
+        for db in ('online', 'local'):
+            n = int(val(db, "select count(*) from sync_conflicts where tipo like 'item_em_comanda_%' or tipo='pagamento_excede_total'")) - 0
+            self.assertEqual(int(val(db, "select count(*) from sync_conflicts")), antes[db], f'{db}: conflitos novos na importação: ' + str(sql(db, "select tipo,count(*) from sync_conflicts group by tipo")))
+        self.assertEqual(val('local', "select count(*) from comandas where identificacao like 'HIST%' and status='fechada'"), '3')
 
 class T10_Restauracao(Base):
     def test_voltar_cursor_nao_duplica(self):

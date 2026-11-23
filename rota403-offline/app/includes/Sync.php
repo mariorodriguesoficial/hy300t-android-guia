@@ -197,9 +197,16 @@ final class Sync
         $cid = (int) $v['comanda_id'];
         Database::query('UPDATE comandas SET total = (SELECT COALESCE(SUM(subtotal),0) FROM comanda_itens WHERE comanda_id=?) WHERE id=?', [$cid, $cid]);
         $c = Database::one('SELECT * FROM comandas WHERE id=?', [$cid]);
+        // Só é conflito o item lançado DEPOIS do fechamento (a comanda já foi paga sem ele). Item que chega junto com uma
+        // venda histórica (adicionado_em <= fechado_em) é normal — senão toda importação inicial viraria "conflito".
+        // Tolerância de 1 s: venda direta grava itens e fecha no mesmo segundo.
         if ($t === 'comanda_itens' && $c['status'] !== 'aberta') {
-            self::conflito($t, $ev['uuid'], 'item_em_comanda_' . $c['status'], 'comanda_id', $c, $ev['data'], $ev);
-            return 'conflito';
+            $adic = isset($v['adicionado_em']) ? strtotime((string) $v['adicionado_em']) : false;
+            $fech = !empty($c['fechado_em']) ? strtotime((string) $c['fechado_em']) : false;
+            if ($adic !== false && $fech !== false && $adic > $fech + 1) {
+                self::conflito($t, $ev['uuid'], 'item_em_comanda_' . $c['status'], 'comanda_id', $c, $ev['data'], $ev);
+                return 'conflito';
+            }
         }
         if ($t === 'comanda_pagamentos') {
             $pago = (float) Database::val('SELECT COALESCE(SUM(valor),0) FROM comanda_pagamentos WHERE comanda_id=?', [$cid]);
@@ -314,6 +321,18 @@ final class Sync
     {
         Database::query('INSERT INTO sync_conflicts (tabela, uuid, tipo, campos, local_json, remoto_json, origem, evento_id) VALUES (?,?,?,?,?,?,?,?)',
             [$t, $uuid, $tipo, $campos, json_encode($local, JSON_UNESCAPED_UNICODE), json_encode($remoto, JSON_UNESCAPED_UNICODE), $ev['origin_device'] ?? null, $ev['event_id'] ?? null]);
+    }
+
+    /** Tipos que apenas informam (não alteram dados ao resolver): podem ser resolvidos em lote com "manter". */
+    const TIPOS_INFORMATIVOS = ['item_em_comanda_fechada', 'item_em_comanda_cancelada', 'pagamento_excede_total', 'exclusao_vs_edicao', 'codigo_duplicado'];
+
+    public static function resolverLote(string $tipo, string $usuario, string $justificativa): int
+    {
+        if (!in_array($tipo, self::TIPOS_INFORMATIVOS, true)) throw new RuntimeException('Este tipo não pode ser resolvido em lote.');
+        if (trim($justificativa) === '') throw new RuntimeException('Justificativa obrigatória.');
+        $ids = array_column(Database::all("SELECT id FROM sync_conflicts WHERE estado='aberto' AND tipo=?", [$tipo]), 'id');
+        foreach ($ids as $id) self::resolver((int) $id, 'local', $usuario, $justificativa);
+        return count($ids);
     }
 
     /** Decisão explícita do administrador. 'local' mantém; 'remoto' aplica o valor remoto guardado. */
