@@ -7,6 +7,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$DeviceId,
     [string]$Url = 'https://mrinformatica.inf.br/rota403/api/sync/v1',
+    [string]$SecretArquivo = '',
     [string]$Raiz = '', [string]$Dados = (Join-Path $env:ProgramData 'Rota403'), [switch]$SemIniciar
 )
 if (-not $Raiz) { $Raiz = Split-Path -Parent $PSScriptRoot }   # (não usar $PSScriptRoot em valor padrão de parâmetro: falha com parâmetro obrigatório)
@@ -24,10 +25,20 @@ try {
     if ($DeviceId -notmatch '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$') { throw 'DeviceId inválido (esperado um UUID).' }
     if ($Url -notmatch '^https://') { throw 'A URL precisa ser HTTPS.' }
     $Url = $Url.TrimEnd('/')
-    $sec = Read-Host 'Cole o SECRET do dispositivo (não aparece na tela)' -AsSecureString
-    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
-    try { $segredo = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-    if ($segredo -notmatch '^[0-9a-f]{64}$') { throw 'Secret inválido (esperado 64 caracteres hexadecimais).' }
+    if ($SecretArquivo) {
+        # Alternativa quando colar no prompt oculto não funciona: lê de um arquivo de texto e APAGA o arquivo em seguida.
+        if (-not (Test-Path -LiteralPath $SecretArquivo)) { throw "Arquivo do secret não encontrado: $SecretArquivo" }
+        $segredo = ([System.IO.File]::ReadAllText($SecretArquivo)).Trim()
+        Remove-Item -LiteralPath $SecretArquivo -Force
+        L 'Secret lido do arquivo (arquivo apagado).'
+    } else {
+        $sec = Read-Host 'Cole o SECRET do dispositivo (não aparece nada na tela; use botão direito para colar e tecle Enter)' -AsSecureString
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+        try { $segredo = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+        $segredo = $segredo.Trim()
+    }
+    $segredo = $segredo.ToLower()
+    if ($segredo -notmatch '^[0-9a-f]{64}$') { throw ('Secret inválido: esperado 64 caracteres hexadecimais, recebi {0}. Copie de novo, sem espaços nem linhas extras.' -f $segredo.Length) }
 
     # 1) pacote de certificados (o PHP do Windows não traz): baixa e confere o SHA256 publicado pelo curl.se
     $dirCa = Join-Path $C.Raiz 'runtime\cacert'; $ca = Join-Path $dirCa 'cacert.pem'
