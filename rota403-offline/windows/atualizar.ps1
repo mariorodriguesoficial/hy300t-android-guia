@@ -15,8 +15,11 @@ try {
         if ((Get-Service Rota403DB).Status -ne 'Running') { Start-Service Rota403DB; $null = Esperar-Porta 3307 60 }
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'backup.ps1') -Motivo 'pre-atualizacao' -Raiz $C.Raiz -Dados $C.Dados
         if ($LASTEXITCODE -ne 0) { throw 'Backup prévio falhou: atualização abortada (nada foi alterado).' }
-        foreach ($s in 'Rota403Sync', 'Rota403Web') { Stop-Service $s -Force -ErrorAction SilentlyContinue }
-        L 'Pronto para atualizar arquivos.'
+        # Para TUDO (inclusive o banco, depois do backup): arquivos em uso não podem ser substituídos pelo instalador.
+        foreach ($s in 'Rota403Sync', 'Rota403Web', 'Rota403DB') { Stop-Service $s -Force -ErrorAction SilentlyContinue }
+        foreach ($img in 'php-cgi', 'caddy', 'mariadbd') { Get-Process -Name $img -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 2
+        L 'Serviços parados; pronto para atualizar arquivos (o instalador os reinicia ao final).'
     } else {
         $php = Join-Path $C.Php 'php.exe'
         $null = Executar $php @('-c', (Join-Path $C.Php 'php.ini'), (Join-Path $C.App 'bin\migrate.php')) 'migrações'
