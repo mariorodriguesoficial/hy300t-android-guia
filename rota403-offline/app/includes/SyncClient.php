@@ -34,6 +34,7 @@ final class SyncClient
         $pdo = Database::pdo(); $st = ['enviados' => 0, 'recebidos' => 0, 'conflitos' => 0, 'erro' => null];
         if (!(int) Database::val("SELECT GET_LOCK('rota403_sync', 0)")) { $st['erro'] = 'ocupado'; return $st; }   // lease: um worker por vez
         try {
+            try { Sync::reconhecerInformativos(); } catch (Throwable $e) { }
             self::enviar($lote, $st);
             if (!$st['erro']) self::receber($lote, $st);
             Sync::meta($st['erro'] ? 'ultimo_erro' : 'ultima_sync_utc', $st['erro'] ?: gmdate('Y-m-d H:i:s'));

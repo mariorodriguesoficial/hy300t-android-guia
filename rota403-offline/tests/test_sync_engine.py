@@ -206,19 +206,19 @@ class T07_DoisDispositivos(Base):
         self.assertNotIn(ev['uuid'], [e['uuid'] for e in j['eventos']]); self.assertGreater(len(j['eventos']), 0)
 
 class T08_Conflitos(Base):
-    def test_preco_alterado_nos_dois_lados_gera_conflito_e_resolucao_propaga(self):
+    def test_preco_alterado_nos_dois_lados_ultima_alteracao_vence_sozinha(self):
         n = novo_produto('Preco1'); sync_ate_estabilizar()
-        sql('online', "update produtos set preco=11 where nome='Preco1'"); sql('local', "update produtos set preco=12 where nome='Preco1'")
+        sql('online', "update produtos set preco=11 where nome='Preco1'"); time.sleep(0.05); sql('local', "update produtos set preco=12 where nome='Preco1'")
         sync_ate_estabilizar()
-        self.assertEqual(val('online', "select preco from produtos where nome='Preco1'"), '11.00')      # nada foi escolhido sozinho
-        self.assertEqual(val('local', "select preco from produtos where nome='Preco1'"), '12.00')
-        for db in ('online', 'local'): self.assertEqual(val(db, "select count(*) from sync_conflicts where tabela='produtos' and estado='aberto'"), '1', db)
-        cid = val('online', "select id from sync_conflicts where tabela='produtos' and estado='aberto'")
-        r = php('online', '-r', f"require 'config/config.php'; Sync::resolver({cid}, 'local', 'admin', 'preço da matriz'); echo 'ok';"); self.assertEqual(r.stdout.strip(), 'ok', r.stderr)
+        for db in ('online', 'local'):
+            self.assertEqual(val(db, "select preco from produtos where nome='Preco1'"), '12.00', db)       # a edição mais recente venceu nos DOIS lados
+            self.assertEqual(val(db, "select count(*) from sync_conflicts where estado='aberto'"), '0', db) # nada fica esperando o usuário
+        self.assertGreaterEqual(int(val('online', "select count(*) from sync_conflicts where tipo='edicao_concorrente' and decisao='auto'")), 1)   # mas fica registrado
+    def test_edicao_inversa_o_outro_lado_mais_recente_vence(self):
+        novo_produto('Preco2'); sync_ate_estabilizar()
+        sql('local', "update produtos set preco=21 where nome='Preco2'"); time.sleep(0.05); sql('online', "update produtos set preco=22 where nome='Preco2'")
         sync_ate_estabilizar()
-        self.assertEqual(val('local', "select preco from produtos where nome='Preco1'"), '11.00')
-        for db in ('online', 'local'): self.assertEqual(val(db, "select count(*) from sync_conflicts where tabela='produtos' and estado='aberto'"), '0', db)
-        self.assertEqual(val('online', "select resolvido_por from sync_conflicts where id=" + cid), 'admin')
+        for db in ('online', 'local'): self.assertEqual(val(db, "select preco from produtos where nome='Preco2'"), '22.00', db)
     def test_cancelar_e_fechar_simultaneos(self):
         cid = nova_comanda(C['on'], 'online', 'CXL'); C['on'].lancar(cid, pid('online', 'Espeto'), 1); sync_ate_estabilizar()
         caixa_aberto(C['lo'], 'local')
@@ -226,9 +226,9 @@ class T08_Conflitos(Base):
         C['lo'].post('/caixa', acao='receber', comanda_id=cid, **{'pg_forma[]': 'PIX', 'pg_valor[]': '10,00'})
         self.assertEqual(val('online', f"select status from comandas where id={cid}"), 'cancelada'); self.assertEqual(val('local', f"select status from comandas where id={cid}"), 'fechada')
         sync_ate_estabilizar()
-        self.assertEqual(val('online', f"select status from comandas where id={cid}"), 'cancelada')    # nenhum lado reabriu nem sobrescreveu
-        self.assertEqual(val('local', f"select status from comandas where id={cid}"), 'fechada')
-        for db in ('online', 'local'): self.assertGreaterEqual(int(val(db, "select count(*) from sync_conflicts where tipo='estado_divergente' and estado='aberto'")), 1, db)
+        for db in ('online', 'local'):
+            self.assertEqual(val(db, f"select status from comandas where id={cid}"), 'fechada', db)       # fechada (paga) prevalece sobre cancelada, sem reabrir
+            self.assertEqual(val(db, "select count(*) from sync_conflicts where estado='aberto'"), '0', db)
     def test_fechamento_remoto_nao_e_desfeito_por_estado_antigo(self):
         cid = nova_comanda(C['on'], 'online', 'FECH'); sync_ate_estabilizar(); caixa_aberto(C['on'], 'online')
         C['lo'].post('/caixa', acao='abrir', saldo='0') if val('local', "select count(*) from caixas where status='aberto'") == '0' else None
@@ -304,17 +304,12 @@ class T10_Restauracao(Base):
         self.assertEqual(val('local', "select count(*) from comandas where codigo is not null group by codigo having count(*)>1 limit 1") if sql('local', "select codigo from comandas group by codigo having count(*)>1") else '0', '0')
 
 class T11_PainelConflitos(Base):
-    def test_painel_lista_e_resolve_pelo_navegador_e_propaga_a_decisao(self):
-        st, html = C['lo'].req('/sync_conflitos'); self.assertEqual(st, 200); self.assertIn('estado_divergente', html)
-        cid = val('local', "select id from sync_conflicts where tipo='estado_divergente' and estado='aberto' order by id limit 1")
-        uuid = val('local', f"select uuid from sync_conflicts where id={cid}")
-        st, _ = C['lo'].post('/sync_conflitos', id=cid, decisao='local', justificativa='')                  # sem justificativa: recusa
-        self.assertEqual(val('local', f"select estado from sync_conflicts where id={cid}"), 'aberto')
-        C['lo'].post('/sync_conflitos', id=cid, decisao='local', justificativa='Pagamento foi recebido no caixa')
-        self.assertEqual(val('local', f"select estado from sync_conflicts where id={cid}"), 'resolvido')
-        self.assertEqual(val('local', f"select resolvido_por from sync_conflicts where id={cid}"), 'Admin')
-        sync_ate_estabilizar()
-        self.assertEqual(val('online', f"select status from comandas where uuid='{uuid}'"), 'fechada')       # decisão propagou (cancelada -> fechada)
-        self.assertEqual(val('online', f"select count(*) from sync_conflicts where uuid='{uuid}' and estado='aberto'"), '0')
+    def test_informativos_abertos_sao_resolvidos_sozinhos_e_painel_abre(self):
+        sql('local', "insert into sync_conflicts (tabela, uuid, tipo, local_json, remoto_json) values ('comanda_itens', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'item_em_comanda_fechada', '{}', '{}')")
+        self.assertEqual(val('local', "select count(*) from sync_conflicts where estado='aberto'"), '1')
+        worker()
+        self.assertEqual(val('local', "select count(*) from sync_conflicts where estado='aberto'"), '0')
+        self.assertEqual(val('local', "select decisao from sync_conflicts where uuid='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'"), 'auto')
+        st, html = C['lo'].req('/sync_conflitos'); self.assertEqual(st, 200)
 
 if __name__ == '__main__': unittest.main()

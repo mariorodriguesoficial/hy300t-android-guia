@@ -74,7 +74,7 @@ final class Sync
             } else $data[$c] = $row[$c];
         }
         if ($t === 'comandas') $data['id_origem'] = (int) $row['id'];
-        return $base + ['op' => 'U', 'rev' => (int) $row['rev'], 'origin_device' => $row['origin_device'], 'data' => $data];
+        return $base + ['op' => 'U', 'rev' => (int) $row['rev'], 'origin_device' => $row['origin_device'], 'atualizado_utc' => (string) $row['updated_at_utc'], 'data' => $data];
     }
 
     // ================= APLICAÇÃO (cliente ao puxar; servidor ao receber push) =================
@@ -257,8 +257,16 @@ final class Sync
         if (!$localMudou) return self::gravar($t, $ev, $novo, $s, max($ev['rev'], 1));
         // ---- as duas pontas mudaram desde o último ponto comum ----
         if ($t === 'comandas') return self::mesclarComanda($ev, $local, $novo, $dif);
-        self::conflito($t, $ev['uuid'], 'edicao_concorrente', implode(',', $dif), $local, $data, $ev);
-        self::marcar($t, $ev['uuid'], $ev['rev']);   // evita recontar o mesmo evento; local continua com seu valor até decisão
+        // Regra automática: a alteração MAIS RECENTE vence (horário UTC da última edição; empate decide o id do dispositivo).
+        // Os dois lados aplicam a mesma regra sobre os mesmos dois horários, então convergem para o mesmo valor.
+        $tr = (string) ($ev['atualizado_utc'] ?? ''); $tl = (string) $local['updated_at_utc'];
+        $remotoVence = $tr === '' || $tr > $tl || ($tr === $tl && $via > self::deviceId());
+        self::conflito($t, $ev['uuid'], 'edicao_concorrente', implode(',', $dif), $local, $data, $ev,
+            $remotoVence ? 'Automático: prevaleceu a alteração mais recente (do outro ambiente).' : 'Automático: prevaleceu a alteração mais recente (deste ambiente).');
+        if ($remotoVence) return self::gravar($t, $ev, $novo, $s, max((int) $local['rev'], $ev['rev']) + 1);
+        // O valor DESTE lado venceu: responde 'conflito' (resolvido sozinho) para o remetente NÃO marcar o registro como sincronizado
+        // e ainda puxar o valor vencedor depois. (As contagens de rev de cada lado não são comparáveis entre si.)
+        self::marcar($t, $ev['uuid'], $ev['rev']);
         return 'conflito';
     }
 
@@ -288,9 +296,19 @@ final class Sync
         $s = self::spec()['comandas']; $t = 'comandas';
         $lt = $local['status'] !== 'aberta'; $rt = ($novo['status'] ?? 'aberta') !== 'aberta';
         if ($lt && $rt && $local['status'] !== $novo['status']) {
-            self::conflito($t, $ev['uuid'], 'estado_divergente', 'status', $local, $ev['data'], $ev);
+            // Automático: 'fechada' (houve pagamento) prevalece sobre 'cancelada'. Nunca reabre.
+            $remotoFechada = ($novo['status'] ?? '') === 'fechada';
+            self::conflito($t, $ev['uuid'], 'estado_divergente', 'status', $local, $ev['data'], $ev,
+                'Automático: comanda fechada (paga) prevalece sobre cancelada. Confira o estoque dos itens, se necessário.');
+            if ($remotoFechada) {
+                $cols = array_intersect_key($novo, array_flip(['status', 'forma_pagamento', 'fechado_em', 'troco', 'caixa_id']));
+                $set = []; $par = [];
+                foreach ($cols as $c => $v) { $set[] = "`$c`=?"; $par[] = $v; }
+                $set[] = 'rev=?'; $par[] = max((int) $local['rev'], $ev['rev']) + 1; $par[] = $ev['uuid'];
+                Database::query('UPDATE comandas SET ' . implode(',', $set) . ' WHERE uuid=?', $par);
+            }
             self::marcar($t, $ev['uuid'], $ev['rev']);
-            return 'conflito';
+            return $remotoFechada ? 'aceito' : 'conflito';
         }
         if (!$lt && $rt) { self::marcar($t, $ev['uuid'], $ev['rev']); return 'aceito'; }       // mesmo estado terminal
         if ($lt && !$rt) { self::marcar($t, $ev['uuid'], $ev['rev']); return 'aceito'; }       // remoto antigo: mantém fechamento local
@@ -317,10 +335,25 @@ final class Sync
         return $l;
     }
 
-    public static function conflito(string $t, string $uuid, string $tipo, ?string $campos, $local, $remoto, array $ev): void
+    /**
+     * Registra a ocorrência. Tipos informativos e decisões automáticas ($autoNota) nascem RESOLVIDOS: ficam só no histórico,
+     * sem fila para o usuário e sem exigir justificativa.
+     */
+    public static function conflito(string $t, string $uuid, string $tipo, ?string $campos, $local, $remoto, array $ev, ?string $autoNota = null): void
     {
-        Database::query('INSERT INTO sync_conflicts (tabela, uuid, tipo, campos, local_json, remoto_json, origem, evento_id) VALUES (?,?,?,?,?,?,?,?)',
-            [$t, $uuid, $tipo, $campos, json_encode($local, JSON_UNESCAPED_UNICODE), json_encode($remoto, JSON_UNESCAPED_UNICODE), $ev['origin_device'] ?? null, $ev['event_id'] ?? null]);
+        $auto = $autoNota !== null || in_array($tipo, self::TIPOS_INFORMATIVOS, true);
+        Database::query("INSERT INTO sync_conflicts (tabela, uuid, tipo, campos, local_json, remoto_json, origem, evento_id, estado, decisao, resolvido_por, resolvido_utc, justificativa)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?, " . ($auto ? 'UTC_TIMESTAMP(3)' : 'NULL') . ", ?)",
+            [$t, $uuid, $tipo, $campos, json_encode($local, JSON_UNESCAPED_UNICODE), json_encode($remoto, JSON_UNESCAPED_UNICODE), $ev['origin_device'] ?? null, $ev['event_id'] ?? null,
+             $auto ? 'resolvido' : 'aberto', $auto ? 'auto' : null, $auto ? 'sistema' : null, $auto ? ($autoNota ?? 'Informativo: nenhum dado foi perdido.') : null]);
+    }
+
+    /** Resolve automaticamente (sem usuário) qualquer ocorrência meramente informativa que tenha ficado aberta. */
+    public static function reconhecerInformativos(): int
+    {
+        $in = "'" . implode("','", self::TIPOS_INFORMATIVOS) . "'";
+        return Database::query("UPDATE sync_conflicts SET estado='resolvido', decisao='auto', resolvido_por='sistema', resolvido_utc=UTC_TIMESTAMP(3),
+            justificativa='Informativo: nenhum dado foi perdido.' WHERE estado='aberto' AND tipo IN ($in)")->rowCount();
     }
 
     /** Tipos que apenas informam (não alteram dados ao resolver): podem ser resolvidos em lote com "manter". */
